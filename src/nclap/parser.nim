@@ -169,8 +169,8 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
 
 proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
-  if len(argv) == 0:
-    parser.showHelp()
+  #if len(argv) == 0:
+  #  parser.showHelp()
 
   let res = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
