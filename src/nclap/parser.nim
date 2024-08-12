@@ -157,7 +157,10 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       depth += 1
       
 
-    else: res[current_flag.long] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())  # NOTE: no subarguments because it is a flag
+    else:
+      # NOTE: no subarguments because it is a flag
+      res[current_flag.long] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())
+      res[current_flag.short] = res[current_flag.long]
   # NOTE: then it is a command
   else:
     let
