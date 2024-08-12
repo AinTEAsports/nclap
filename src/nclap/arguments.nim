@@ -6,7 +6,9 @@ import std/[
 
 import cliargs
 
-const HOLDS_VALUE_DEFAULT* = false
+const
+  HOLDS_VALUE_DEFAULT* = false
+  REQUIRED_DEFAULT* = true
 
 type
   ArgumentType* = enum
@@ -20,6 +22,7 @@ type
         long*: string
         holds_value*: bool
         flag_description*: string
+        required*: bool
 
       of Command:
         name*: string
@@ -27,8 +30,14 @@ type
         command_description*: string
 
 
-func newFlag*(short: string, long: string = short, holds_value: bool = HOLDS_VALUE_DEFAULT, description: string = long): Argument =
-  Argument(kind: Flag, short: short, long: long, holds_value: holds_value, flag_description: description)
+func newFlag*(
+  short: string,
+  long: string = short,
+  holds_value: bool = HOLDS_VALUE_DEFAULT,
+  description: string = long,
+  required: bool = REQUIRED_DEFAULT
+): Argument =
+  Argument(kind: Flag, short: short, long: long, holds_value: holds_value, flag_description: description, required: required)
 
 func newCommand*(name: string, subcommands: seq[Argument] = @[], description: string = name): Argument =
   Argument(kind: Command, name: name, subcommands: subcommands, command_description: description)
@@ -41,8 +50,9 @@ func `$`*(argument: Argument): string =
         l = argument.long
         h = argument.holds_value
         desc = argument.flag_description
+        r = argument.required
 
-      &"Flag(short: \"{s}\", long: \"{l}\", holds_value: {h}, description: \"{desc}\")"
+      &"Flag(short: \"{s}\", long: \"{l}\", holds_value: {h}, description: \"{desc}\", required: {r})"
 
     of Command:
       let

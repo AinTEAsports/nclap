@@ -15,6 +15,7 @@ import cliargs
 const
   INVALID_ARGUMENT_EXIT_CODE = 1
   MISSING_COMMAND_EXIT_CODE = 2
+  MISSING_REQUIRED_FLAGS_EXIT_CODE = 3
 
 type
   Parser* = object
@@ -150,8 +151,8 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         depth += 1
         content = argv[depth]
 
-      res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-      # WARNING: I ADDED THIS
+      res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+      res[current_flag.long] = res[current_flag.short]
       depth += 1
       
 
@@ -160,9 +161,25 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
   else:
     let
       current_command = valid_arguments.getCommand(current_argv)
-      rest = parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
+      rest = (
+        if len(current_command.subcommands) == 0: initTable[string, CLIArg]()
+        else: parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
+      )
 
-    res[current_command.name] = CLIArg(content: "", registered: true, subarguments: rest)
+    res[current_command.name] = CLIArg(
+      content: (
+        # NOTE: if no commands are next, just take everything after and set it as the content
+        # 
+        # WARNING: the rest won't be parsed, which means in `./program add task -o test`,
+        # `args["add"]["task"].content` will be `"-o test"`, so no flags at the end
+        # /!\ POTENTIAL SOLUTION /!\ : bubble the flags up, taking into account which
+        # take parameters and which don't
+        if len(rest) == 0 and depth < len(argv)-1: join(argv[depth+1..^1], " ")
+        else: ""
+      ),
+      registered: true,
+      subarguments: rest
+    )
 
   res
 
@@ -175,15 +192,27 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let res = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
-  let registered_commands = collect(
-    for name, cliarg in res:
-      if name.startsWith('-'): (false, false)  # NOTE: the second one doesn't matter since we check the second one only if the first one is true
-      else: (true, cliarg.registered)
-  ).filter(pair => pair[0])
-  
-  if registered_commands.all(pair => not pair[1]) and len(registered_commands) > 0:
+  let
+    registered_commands = collect(
+      for name, cliarg in res:
+        if name.startsWith('-'): (false, false)  # NOTE: the second one doesn't matter since we check the second one only if the first one is true
+        else: (true, cliarg.registered)
+    ).filter(pair => pair[0])
+
+    required_flags = collect(
+      for name, cliarg in res:
+        if not name.startsWith('-'): (false, false)  # NOTE: same as above
+        else: (true, parser.arguments.getFlag(name).required)
+    ).filter(pair => pair[0])
+
+  if len(registered_commands) > 0 and registered_commands.all(pair => not pair[1]):
     echo &"[ERROR.parse] No command has been registered"
     parser.showHelp(MISSING_COMMAND_EXIT_CODE)
+
+  if len(required_flags) > 0 and required_flags.all(pair => not pair[1]):
+    # TODO: show which flags haven't been registered
+    echo &"[ERROR.parse] some flags haven't been registered even though required"
+    parser.showHelp(MISSING_REQUIRED_FLAGS_EXIT_CODE)
 
   res
 

@@ -3,6 +3,7 @@ import std/[
   strformat
 ]
 
+
 type
   CLIArg* = object
     content*: string
@@ -10,6 +11,8 @@ type
     subarguments*: Table[string, CLIArg]
 
   CLIArgs* = Table[string, CLIArg]
+
+const DEFAULT_CLIARG = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
 
 
 func `$`*(cliarg: CLIArg): string =
@@ -36,3 +39,14 @@ func tostring*(cliarg: CLIArg): string =
 
 func tostring*(cliargs: CLIArgs): string =
   $cliargs
+
+
+func `[]`*(cliarg: CLIArg, subargument_name: string): CLIArg =
+  cliarg.subarguments[subargument_name]
+
+func `[]`*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
+  if not cliargs.hasKey(cliarg_name): raise newException(KeyError, &"Key \"{cliarg_name}\" not found in CLIArgs")
+  else: cliargs.getOrDefault(cliarg_name, DEFAULT_CLIARG)
+
+func getCLIArg*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
+  cliargs[cliarg_name]

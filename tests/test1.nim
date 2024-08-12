@@ -44,3 +44,6 @@ test "parser test":
   #echo tostring(parser.parse(@["-o=/tmp/test"]))   # Should not run, saying no command has been registered
   #echo tostring(parser.parse(@["add", "task"]))    # Should run
   #echo tostring(parser.parse(@[]))                 # Should show help message
+
+  let args = parser.parse(@["add", "task", "pokemon", "-o", "test"])
+  echo args["add"]["task"]
