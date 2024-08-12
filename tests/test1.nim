@@ -6,6 +6,7 @@
 # To run these tests, simply execute `nimble test`.
 
 import unittest
+import std/strformat
 
 import nclap
 import nclap/parser
@@ -31,7 +32,7 @@ import nclap/cliargs
 #  echo "[DEBUG.TEST.newParser] END"
 
 
-test "parser test":
+test "command parser test":
   var parser = newParser("[HELPDESC] parser test for the win")
 
   discard parser
@@ -46,4 +47,33 @@ test "parser test":
   #echo tostring(parser.parse(@[]))                 # Should show help message
 
   let args = parser.parse(@["add", "task", "pokemon", "-o", "test"])
-  echo args["add"]["task"]
+  echo &"[DEBUG.command test parser] args: {args}"
+  echo &"[DEBUG.command test parser] args[\"add\"][\"task\"]: " & $args["add"]["task"]
+
+
+test "flag parser test":
+  var p = newParser("Example number one")
+
+  discard p
+    .addFlag("-h", "--help", false, "shows this help message")
+    .addFlag("-a", "--all", false, "shows all files")
+    .addFlag("-l", "--long", false, "shows additional information")
+    .addFlag("-o", "--output", true, "output to a file", true)
+
+  # By default, will take `argv`
+  let args = p.parse(@["-a", "--long", "--output=test"])
+  echo args
+
+  # NOTE: you can use either the short or long flag to access the value
+  if args["--help"].registered:
+      p.showHelp()
+
+  if args["-a"].registered:
+      echo "Showing all files"
+
+  if args["-l"].registered:
+      echo "Showing additional information"
+
+  if args["--output"].registered:
+      echo "Redirecting content to " & args["--output"].content
+

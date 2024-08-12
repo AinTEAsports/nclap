@@ -115,16 +115,22 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
   # NOTE: fill in all the arguments, with `registered: false` by default
   for argument in valid_arguments:
-    let name = (case argument.kind:
-      of Command: argument.name
-      of Flag: argument.long
-    )
+    case argument.kind:
+      of Command:
+        if res.hasKey(argument.name):
+          continue
 
-    res[name] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+        res[argument.name] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+      of Flag:
+        if res.hasKey(argument.short) or res.hasKey(argument.long):
+          continue
+
+        res[argument.short] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+        res[argument.long] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
 
 
   # NOTE: when valid_arguments is empty we are done
-  let current_argv = argv[depth]
+  var current_argv = argv[depth]
   assert current_argv != ""
 
   if not valid_arguments.isValidArgument(current_argv):
@@ -153,14 +159,20 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         content = argv[depth]
 
       res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-      res[current_flag.long] = res[current_flag.short]
+      res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
       depth += 1
-      
+
 
     else:
       # NOTE: no subarguments because it is a flag
       res[current_flag.long] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())
-      res[current_flag.short] = res[current_flag.long]
+      res[current_flag.short] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())
+
+    # NOTE: at the end, we concat the current `res` with the next one, and we return it
+    let next = parser.parseArgs(argv, depth+1, some[seq[Argument]](valid_arguments))
+
+    # NOTE: if some flags are redundant, the second argument's ones will be prioritized
+    return concatCLIArgs(res, next)
   # NOTE: then it is a command
   else:
     let

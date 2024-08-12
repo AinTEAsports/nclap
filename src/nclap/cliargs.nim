@@ -50,3 +50,13 @@ func `[]`*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
 
 func getCLIArg*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
   cliargs[cliarg_name]
+
+
+func concatCLIArgs*(a, b: CLIArgs): CLIArgs =
+  var res = a
+
+  for key, value in b:
+    if not res.hasKey(key) or value.registered:
+      res[key] = value
+
+  res
