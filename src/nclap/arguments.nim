@@ -33,11 +33,11 @@ type
 func newFlag*(
   short: string,
   long: string = short,
-  holds_value: bool = HOLDS_VALUE_DEFAULT,
   description: string = long,
+  holds_value: bool = HOLDS_VALUE_DEFAULT,
   required: bool = REQUIRED_DEFAULT
 ): Argument =
-  Argument(kind: Flag, short: short, long: long, holds_value: holds_value, flag_description: description, required: required)
+  Argument(kind: Flag, short: short, long: long, flag_description: description, holds_value: holds_value, required: required)
 
 func newCommand*(name: string, subcommands: seq[Argument] = @[], description: string = name): Argument =
   Argument(kind: Command, name: name, subcommands: subcommands, command_description: description)

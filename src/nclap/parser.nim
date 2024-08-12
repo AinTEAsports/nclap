@@ -30,7 +30,7 @@ proc newParser*(help_message: string = ""): Parser =
   )
 
 
-func addArgument*(parser: var Parser, argument: Argument): var Parser =
+func addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
   (parser.arguments.add(argument); parser)
 
 
@@ -39,17 +39,17 @@ func addCommand*(
   name: string,
   subcommands: seq[Argument] = @[],
   description: string = name
-): var Parser = parser.addArgument(newCommand(name, subcommands, description))
+): var Parser {.discardable.} = parser.addArgument(newCommand(name, subcommands, description))
 
 
 func addFlag*(
   parser: var Parser,
   short: string,
   long: string = short,
-  holds_value: bool = HOLDS_VALUE_DEFAULT,
   description: string = long,
+  holds_value: bool = HOLDS_VALUE_DEFAULT,
   required: bool = REQUIRED_DEFAULT
-): var Parser = parser.addArgument(newFlag(short, long, holds_value, description, required))
+): var Parser {.discardable.} = parser.addArgument(newFlag(short, long, description, holds_value, required))
 
 
 func `$`*(parser: Parser): string =

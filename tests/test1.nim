@@ -8,10 +8,16 @@
 import unittest
 import std/strformat
 
-import nclap
-import nclap/parser
-import nclap/arguments
-import nclap/cliargs
+#import nclap
+#import nclap/parser
+#import nclap/arguments
+#import nclap/cliargs
+
+import nclap/[
+  parser,
+  arguments,
+  cliargs
+]
 
 #test "newArgument":
 #  echo "[DEBUG.TEST.newArgument] START"
@@ -37,9 +43,9 @@ test "command parser test":
 
   discard parser
     .addCommand("add", @[newCommand("task", @[], "adds a new task"), newCommand("project", @[], "adds a new project")], "add a new")
-    .addCommand("remove", @[newFlag("-n", "--no-log", false, "Does not log the deletion")], "remove a command")
-    .addCommand("list", @[newFlag("-a", "--all", false, "show all tasks")], "list tasks")
-    .addFlag("-o", "--output", true, "outputs to a file")
+    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion", false)], "remove a command")
+    .addCommand("list", @[newFlag("-a", "--all", "show all tasks", false)], "list tasks")
+    .addFlag("-o", "--output", "outputs to a file", true)
 
   #echo tostring(parser.parse(@["list", "-a"]))     # Should run
   #echo tostring(parser.parse(@["-o=/tmp/test"]))   # Should not run, saying no command has been registered
@@ -55,10 +61,10 @@ test "flag parser test":
   var p = newParser("Example number one")
 
   discard p
-    .addFlag("-h", "--help", false, "shows this help message")
-    .addFlag("-a", "--all", false, "shows all files")
-    .addFlag("-l", "--long", false, "shows additional information")
-    .addFlag("-o", "--output", true, "output to a file", true)
+    .addFlag("-h", "--help", "shows this help message")
+    .addFlag("-a", "--all", "shows all files")
+    .addFlag("-l", "--long", "shows additional information")
+    .addFlag("-o", "--output", "output to a file", true, true)
 
   # By default, will take `argv`
   let args = p.parse(@["-a", "--long", "--output=test"])
@@ -77,3 +83,80 @@ test "flag parser test":
   if args["--output"].registered:
       echo "Redirecting content to " & args["--output"].content
 
+
+test "example1":
+  var p = newParser("example number 1, flags only")
+
+  # NOTE: p.addFlag(short, long, description=long, holds_value=false, required=false)
+  p.addFlag("-h", "--help", "shows this help message", false)
+    .addFlag("-vv", "--verbose", "shows additional informations", false)
+    .addFlag("-o", "--output", "outputs to a file", true, true)
+
+  let args = p.parse()
+
+  # you can access the flag value with the short or the long version
+  if args["--help"].registered:
+    p.showHelp(exit_code=1)
+
+  if args["-vv"].registered:
+    echo "Showing additional information"
+
+  echo "Output goes to: " & args["--output"].content
+
+
+test "example2":
+  var p = newParser("example number 2, commands only")
+
+  # NOTE: p.addCommand(name, subcommands=@[], desc=name)
+  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+    .addCommand("remove", @[newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
+    .addCommand("list", @[], "lists everything")
+
+  let args = p.parse()
+
+  if args["add"].registered:
+    if args["task"].registered:
+      echo "Adding task", args["add"]["task"].content
+    else:
+      echo "Adding project", args["add"]["project"].content
+  elif args["remove"].registered:
+    if args["task"].registered:
+      echo "Removing task", args["remove"]["task"].content
+    else:
+      echo "Removing project", args["remove"]["project"].content
+  else:
+    echo "Listing everything"
+
+
+test "example3":
+  proc outputTo(output: string, content: string) =
+    if output == "": echo content
+    else: writeFile(output, content)
+
+
+  var p = newParser("example number 2, commands only")
+
+  # NOTE: p.addCommand(name, subcommands=@[], desc=name)
+  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+    .addCommand("remove", @[newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
+    .addCommand("list", @[newFlag("-a", "--all", "lists all tasks, even hidden ones")], "listing everything")
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse()
+  let output = (if args["-o"].registered: args["-o"].content else: "")
+
+  if args["add"].registered:
+    if args["task"].registered:
+      outputTo(output, "Adding task" & args["add"]["task"].content)
+    else:
+      outputTo(output, "Adding project" & args["add"]["project"].content)
+  elif args["remove"].registered:
+    if args["task"].registered:
+      outputTo(output, "Removing task" & args["remove"]["task"].content)
+    else:
+      outputTo(output, "Removing project" & args["remove"]["project"].content)
+  else:
+    if args["task"]["-a"].registered:
+      outputTo(output, "Listing everything, even hidden ones")
+    else:
+      outputTo(output, "Listing almost everything (not hidden ones, they're hidden for a reason)")
