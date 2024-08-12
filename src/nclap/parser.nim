@@ -175,11 +175,13 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let res = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
-  if collect(for name, cliarg in res:
-    if name.startsWith('-'): (false, false)  # NOTE: the second one doesn't matter since we check the second one only if the first one is true
-    else: (true, cliarg.registered))
-  .filter(pair => pair[0])
-  .all(pair => not pair[1]):
+  let registered_commands = collect(
+    for name, cliarg in res:
+      if name.startsWith('-'): (false, false)  # NOTE: the second one doesn't matter since we check the second one only if the first one is true
+      else: (true, cliarg.registered)
+  ).filter(pair => pair[0])
+  
+  if registered_commands.all(pair => not pair[1]) and len(registered_commands) > 0:
     echo &"[ERROR.parse] No command has been registered"
     parser.showHelp(MISSING_COMMAND_EXIT_CODE)
 
