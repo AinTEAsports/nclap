@@ -47,8 +47,9 @@ func addFlag*(
   short: string,
   long: string = short,
   holds_value: bool = HOLDS_VALUE_DEFAULT,
-  description: string = long
-): var Parser = parser.addArgument(newFlag(short, long, holds_value, description))
+  description: string = long,
+  required: bool = REQUIRED_DEFAULT
+): var Parser = parser.addArgument(newFlag(short, long, holds_value, description, required))
 
 
 func `$`*(parser: Parser): string =
