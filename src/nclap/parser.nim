@@ -5,7 +5,6 @@ import std/[
   strutils,
   sequtils,
   tables,
-  sugar,
   options
 ]
 
@@ -106,13 +105,16 @@ func getFlag(arguments: seq[Argument], argument_name: string): Argument =
 
 
 # NOTE: argv_rest = parser.parseFlags(res, argv, depth, valid_arguments)
-func parseFlags(
+proc parseFlags(
   parser: Parser,
   res: var CLIArgs,
   argv: seq[string],
   depth: int,
   valid_arguments: Option[seq[Argument]]
-): (seq[string], int) =
+): int =
+  # NOTE: parses every flags, updates `res` in consequence and returns the index at which the flag parsing
+  # ended, basically indicating where the command is
+
   let valid_arguments = valid_arguments.get(parser.arguments)
   var depth = depth
 
@@ -137,16 +139,15 @@ func parseFlags(
 
     res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
     res[current_flag.long] = res[current_flag.short]
-    #res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
 
     depth += 1
 
-  (argv[depth-1..^1], depth-1)
+  depth
 
 
-proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): CLIArgs =
+proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
   if len(argv) == 0 or start >= len(argv):
-    return initTable[string, CLIArg]()
+    return (initTable[string, CLIArg](), @[])
 
   var
     res: CLIArgs = initTable[string, CLIArg]()
@@ -178,60 +179,29 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     quit INVALID_ARGUMENT_EXIT_CODE
 
   # NOTE: from this point we assert the current argument is valid, it exists
-
-  ## NOTE: then it is a flag
-  #if current_argv.startsWith('-'):
-  #  let current_flag = valid_arguments.getFlag(current_argv)
-  #
-  #  if current_flag.holds_value:
-  #    # TODO: make the parsing
-  #    var
-  #      content = ""
-  #      name = current_argv
-  #
-  #    if current_argv.contains('='):
-  #      let splt = current_argv.split('=', maxsplit=1)
-  #
-  #      name = splt[0]
-  #      content = splt[1]
-  #    else:
-  #      depth += 1
-  #      content = argv[depth]
-  #
-  #    res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-  #    res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-  #    depth += 1
-
   if current_argv.startsWith('-'):
     let
-      (argv_rest, new_depth) = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
-      next = parser.parseArgs(argv_rest, new_depth, some[seq[Argument]](valid_arguments))
+      #(argv_rest, new_depth) = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
+      new_depth = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
+      argv_rest = argv[new_depth..^1]
+      (next, argv_rest2) = parser.parseArgs(argv_rest, new_depth, some[seq[Argument]](valid_arguments))
 
-    return concatCLIArgs(res, next)
+    return (concatCLIArgs(res, next), argv_rest)
   else:
     let
       current_command = valid_arguments.getCommand(current_argv)
-      rest = (
-        if len(current_command.subcommands) == 0: initTable[string, CLIArg]()
+      (rest, argv_rest) = (
+        if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), @[])
         else: parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
       )
 
     res[current_command.name] = CLIArg(
-      content: (
-        # NOTE: if no commands are next, just take everything after and set it as the content
-        # 
-        # WARNING: the rest won't be parsed, which means in `./program add task -o test`,
-        # `args["add"]["task"].content` will be `"-o test"`, so no flags at the end
-        # /!\ POTENTIAL SOLUTION /!\ : bubble the flags up, taking into account which
-        # take parameters and which don't
-        if len(rest) == 0 and depth < len(argv)-1: join(argv[depth+1..^1], " ")
-        else: ""
-      ),
+      content: argv_rest.join(" "),
       registered: true,
       subarguments: rest
     )
 
-  res
+  (res, @[])
 
 
 
@@ -239,7 +209,7 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   if len(argv) == 0:
     parser.showHelp()
 
-  let res = parser.parseArgs(argv, 0, none[seq[Argument]]())
+  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
   let
