@@ -19,23 +19,23 @@ import nclap/[
   cliargs
 ]
 
-#test "newArgument":
-#  echo "[DEBUG.TEST.newArgument] START"
-#  echo newFlag("-o", "--output", true, "output to a file")
-#  echo newCommand("add", @[], "adds a task to the todo list")
-#  echo newCommand("remove", @[newFlag("-n", "--no-log", false, "Does not log the deletion")], "adds a task to the todo list")
-#  echo "[DEBUG.TEST.newArgument] END"
-#
-#test "newParser":
-#  echo "[DEBUG.TEST.newParser] START"
-#
-#  var parser = newParser("new parser test")
-#
-#  echo parser
-#    .addCommand("add", @[], "add a new command")
-#    .addCommand("remove", @[newFlag("-n", "--no-log", false, "Does not log the deletion")], "add a new command")
-#
-#  echo "[DEBUG.TEST.newParser] END"
+test "newArgument":
+  echo "[DEBUG.TEST.newArgument] START"
+  echo newFlag("-o", "--output", "output to a file", true)
+  echo newCommand("add", @[], "adds a task to the todo list")
+  echo newCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "adds a task to the todo list")
+  echo "[DEBUG.TEST.newArgument] END"
+
+test "newParser":
+  echo "[DEBUG.TEST.newParser] START"
+
+  var parser = newParser("new parser test")
+
+  echo parser
+    .addCommand("add", @[], "add a new command")
+    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "add a new command")
+
+  echo "[DEBUG.TEST.newParser] END"
 
 
 test "command parser test":
@@ -160,3 +160,22 @@ test "example3":
       outputTo(output, "Listing everything, even hidden ones")
     else:
       outputTo(output, "Listing almost everything (not hidden ones, they're hidden for a reason)")
+
+
+test "new parser version":
+  var p = newParser("new parser test")
+
+  p.addCommand("add",
+    @[
+      newFlag("-a", "--all", "adds all"),
+      newFlag("-n", "--no-log", "no log"),
+      newCommand(
+        "task",
+        @[newFlag("-a", "--all", "adds all tasks")],
+        "adds a task"
+      )
+    ],
+    "adds something"
+  )
+
+  echo p.parse(@["add", "-n", "task", "--all"])

@@ -104,6 +104,46 @@ func getFlag(arguments: seq[Argument], argument_name: string): Argument =
   raise newException(ValueError, &"Invalid flag: {argument_name}")
 
 
+
+# NOTE: argv_rest = parser.parseFlags(res, argv, depth, valid_arguments)
+func parseFlags(
+  parser: Parser,
+  res: var CLIArgs,
+  argv: seq[string],
+  depth: int,
+  valid_arguments: Option[seq[Argument]]
+): (seq[string], int) =
+  let valid_arguments = valid_arguments.get(parser.arguments)
+  var depth = depth
+
+  while depth < len(argv) and argv[depth].startsWith('-'):
+    let
+      current_argv = argv[depth]
+      current_flag = valid_arguments.getFlag(current_argv)
+
+    var
+      name = current_argv
+      content = ""
+
+    if current_flag.holds_value:
+      if current_argv.contains('='):
+        let splt = current_argv.split('=', maxsplit=1)
+
+        name = splt[0]
+        content = splt[1]
+      else:
+        depth += 1
+        content = argv[depth]
+
+    res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+    res[current_flag.long] = res[current_flag.short]
+    #res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+
+    depth += 1
+
+  (argv[depth-1..^1], depth-1)
+
+
 proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): CLIArgs =
   if len(argv) == 0 or start >= len(argv):
     return initTable[string, CLIArg]()
@@ -139,41 +179,35 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
   # NOTE: from this point we assert the current argument is valid, it exists
 
-  # NOTE: then it is a flag
+  ## NOTE: then it is a flag
+  #if current_argv.startsWith('-'):
+  #  let current_flag = valid_arguments.getFlag(current_argv)
+  #
+  #  if current_flag.holds_value:
+  #    # TODO: make the parsing
+  #    var
+  #      content = ""
+  #      name = current_argv
+  #
+  #    if current_argv.contains('='):
+  #      let splt = current_argv.split('=', maxsplit=1)
+  #
+  #      name = splt[0]
+  #      content = splt[1]
+  #    else:
+  #      depth += 1
+  #      content = argv[depth]
+  #
+  #    res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+  #    res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+  #    depth += 1
+
   if current_argv.startsWith('-'):
-    let current_flag = valid_arguments.getFlag(current_argv)
+    let
+      (argv_rest, new_depth) = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
+      next = parser.parseArgs(argv_rest, new_depth, some[seq[Argument]](valid_arguments))
 
-    if current_flag.holds_value:
-      # TODO: make the parsing
-      var
-        content = ""
-        name = current_argv
-
-      if current_argv.contains('='):
-        let splt = current_argv.split('=', maxsplit=1)
-
-        name = splt[0]
-        content = splt[1]
-      else:
-        depth += 1
-        content = argv[depth]
-
-      res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-      res[current_flag.long] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
-      depth += 1
-
-
-    else:
-      # NOTE: no subarguments because it is a flag
-      res[current_flag.long] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())
-      res[current_flag.short] = CLIArg(content: "", registered: true, subarguments: initTable[string, CLIArg]())
-
-    # NOTE: at the end, we concat the current `res` with the next one, and we return it
-    let next = parser.parseArgs(argv, depth+1, some[seq[Argument]](valid_arguments))
-
-    # NOTE: if some flags are redundant, the second argument's ones will be prioritized
     return concatCLIArgs(res, next)
-  # NOTE: then it is a command
   else:
     let
       current_command = valid_arguments.getCommand(current_argv)
