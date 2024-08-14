@@ -27,9 +27,9 @@ import nclap/[
 var p = newParser("example number 1, flags only")
 
 # NOTE: p.addFlag(short, long, description=long, holds_value=false, required=false)
-p.addFlag("-h", "--help", "shows this help message", false)
-  .addFlag("-vv", "--verbose", "shows additional informations", false)
-  .addFlag("-o", "--output", , "outputs to a file", true, true)
+p.addFlag("-h", "--help", "shows this help message")
+  .addFlag("-vv", "--verbose", "shows additional informations")
+  .addFlag("-o", "--output", , "outputs to a file", true)
 
 let args = p.parse()
 
@@ -40,7 +40,7 @@ if args["--help"].registered:
 if args["-vv"].registered:
   echo "Showing additional information"
 
-echo "Output goes to: " & args["--output"].content
+echo "Output goes to: " & args["--output"].getContent(default="/path/to/default_file")
 ```
 ```sh
 $ nim c examples/example1.nim
@@ -69,14 +69,14 @@ let args = p.parse()
 
 if args["add"].registered:
   if args["task"].registered:
-    echo "Adding task", args["add"]["task"].content
+    echo "Adding task", args["add"]["task"].getContent()
   else:
-    echo "Adding project", args["add"]["project"].content
+    echo "Adding project", args["add"]["project"].getContent()
 elif args["remove"].registered:
   if args["task"].registered:
-    echo "Removing task", args["remove"]["task"].content
+    echo "Removing task", args["remove"]["task"].getContent()
   else:
-    echo "Removing project", args["remove"]["project"].content
+    echo "Removing project", args["remove"]["project"].getContent()
 else:
   echo "Listing everything"
 ```
@@ -109,19 +109,19 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
   .addFlag("-o", "--output", "outputs the content to a file", true)
 
 let args = p.parse()
-let out = (if args["-o"].registered: args["-o"].content else: "")
+let out = (if args["-o"].registered: args["-o"].getContent(error=true) else: "")  # NOTE: we error if no value was found because the flag is supposed to be required
 
 if args["add"].registered:
   if args["task"].registered:
-    outputTo(out, "Adding task" & args["add"]["task"].content)
+    outputTo(out, "Adding task" & args["add"]["task"].getContent())
   else:
-    outputTo(out, "Adding project" & args["add"]["project"].content)
+    outputTo(out, "Adding project" & args["add"]["project"].getContent())
 elif args["remove"].registered:
   if not args["task"]["-n"]:
     if args["task"].registered:
-      outputTo(out, "Removing task" & args["remove"]["task"].content)
+      outputTo(out, "Removing task" & args["remove"]["task"].getContent())
     else:
-      outputTo(out, "Removing project" & args["remove"]["project"].content)
+      outputTo(out, "Removing project" & args["remove"]["project"].getContent())
 else:
   outputTo(out, "Listing " & (if args["list"]["-a"].registered: "" else: "almost") & " everything")
 ```

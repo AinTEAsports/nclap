@@ -56,7 +56,11 @@ func `$`*(parser: Parser): string =
 
 
 proc showHelp*(parser: Parser, exit_code: int = 0) =
-  echo "\n" & parser.helpmsg
+  echo parser.helpmsg
+
+  for arg in parser.arguments:
+    echo helpToString(arg)
+
   quit(exit_code)
 
 
@@ -137,7 +141,7 @@ proc parseFlags(
         depth += 1
         content = argv[depth]
 
-    res[current_flag.short] = CLIArg(content: content, registered: true, subarguments: initTable[string, CLIArg]())
+    res[current_flag.short] = CLIArg(content: some[string](content), registered: true, subarguments: initTable[string, CLIArg]())
     res[current_flag.long] = res[current_flag.short]
 
     depth += 1
@@ -161,13 +165,13 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         if res.hasKey(argument.name):
           continue
 
-        res[argument.name] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+        res[argument.name] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
       of Flag:
         if res.hasKey(argument.short) or res.hasKey(argument.long):
           continue
 
-        res[argument.short] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
-        res[argument.long] = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+        res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
+        res[argument.long] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
 
 
   # NOTE: when valid_arguments is empty we are done
@@ -196,7 +200,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       )
 
     res[current_command.name] = CLIArg(
-      content: argv_rest.join(" "),
+      content: some[string](argv_rest.join(" ")),
       registered: true,
       subarguments: rest
     )

@@ -1,7 +1,8 @@
 import std/[
   strformat,
   sugar,
-  sequtils
+  sequtils,
+  strutils
 ]
 
 import cliargs
@@ -68,3 +69,19 @@ func getFlags*(arguments: seq[Argument]): seq[Argument] =
 
 func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
+
+
+func helpToString*(argument: Argument, depth: int = 0, tab: string = "  "): string =
+  let tab_prefix = tab.repeat(depth)
+
+  case argument.kind:
+    of Flag: &"{tab_prefix}[{argument.short}|{argument.long}]\t\t{argument.flag_description}"
+    of Command:
+      var res = ""
+
+      res &= &"{tab_prefix}[{argument.name}]\t\t{argument.command_description}"
+
+      for subargument in argument.subcommands:
+        res &= "\n" & subargument.helpToString(depth + 1, tab)
+
+      res

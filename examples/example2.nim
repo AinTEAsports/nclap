@@ -15,14 +15,14 @@ let args = p.parse()
 
 if args["add"].registered:
   if args["task"].registered:
-    echo "Adding task", args["add"]["task"].content
+    echo "Adding task", args["add"]["task"].getContent()
   else:
-    echo "Adding project", args["add"]["project"].content
+    echo "Adding project", args["add"]["project"].getContent()
 elif args["remove"].registered:
   if args["task"].registered:
-    echo "Removing task", args["remove"]["task"].content
+    echo "Removing task", args["remove"]["task"].getContent()
   else:
-    echo "Removing project", args["remove"]["project"].content
+    echo "Removing project", args["remove"]["project"].getContent()
 else:
   echo "Listing everything"
 

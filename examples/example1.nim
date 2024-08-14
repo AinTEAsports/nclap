@@ -20,4 +20,4 @@ if args["--help"].registered:
 if args["-vv"].registered:
   echo "Showing additional information"
 
-echo "Output goes to: " & args["--output"].content
+echo "Output goes to: " & args["--output"].getContent(error=true)

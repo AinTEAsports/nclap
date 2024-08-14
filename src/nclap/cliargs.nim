@@ -1,18 +1,21 @@
 import std/[
   tables,
-  strformat
+  strformat,
+  options
 ]
 
 
 type
   CLIArg* = object
-    content*: string
+    content*: Option[string]
     registered*: bool
     subarguments*: Table[string, CLIArg]
 
   CLIArgs* = Table[string, CLIArg]
 
-const DEFAULT_CLIARG = CLIArg(content: "", registered: false, subarguments: initTable[string, CLIArg]())
+const
+  DEFAULT_CONTENT = ""
+  DEFAULT_CLIARG = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
 
 
 func `$`*(cliarg: CLIArg): string =
@@ -44,9 +47,11 @@ func tostring*(cliargs: CLIArgs): string =
 func `[]`*(cliarg: CLIArg, subargument_name: string): CLIArg =
   cliarg.subarguments[subargument_name]
 
+
 func `[]`*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
   if not cliargs.hasKey(cliarg_name): raise newException(KeyError, &"Key \"{cliarg_name}\" not found in CLIArgs")
   else: cliargs.getOrDefault(cliarg_name, DEFAULT_CLIARG)
+
 
 func getCLIArg*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
   cliargs[cliarg_name]
@@ -60,3 +65,13 @@ func concatCLIArgs*(a, b: CLIArgs): CLIArgs =
       res[key] = value
 
   res
+
+
+func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool = false): string =
+  ##[ Gets the content of a CLIArg, if no value was found, returns the default value (or throw an error if `error` is set to `true`)
+  ]##
+
+  if cliarg.content.isSome: cliarg.content.get
+  else:
+    if error: raise newException(ValueError, "No content in CLIArg")
+    else: default
