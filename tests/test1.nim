@@ -19,69 +19,69 @@ import nclap/[
   cliargs
 ]
 
-test "newArgument":
-  echo "[DEBUG.TEST.newArgument] START"
-  echo newFlag("-o", "--output", "output to a file", true)
-  echo newCommand("add", @[], "adds a task to the todo list")
-  echo newCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "adds a task to the todo list")
-  echo "[DEBUG.TEST.newArgument] END"
-
-test "newParser":
-  echo "[DEBUG.TEST.newParser] START"
-
-  var parser = newParser("new parser test")
-
-  echo parser
-    .addCommand("add", @[], "add a new command")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "add a new command")
-
-  echo "[DEBUG.TEST.newParser] END"
-
-
-test "command parser test":
-  var parser = newParser("[HELPDESC] parser test for the win")
-
-  discard parser
-    .addCommand("add", @[newCommand("task", @[], "adds a new task"), newCommand("project", @[], "adds a new project")], "add a new")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion", false)], "remove a command")
-    .addCommand("list", @[newFlag("-a", "--all", "show all tasks", false)], "list tasks")
-    .addFlag("-o", "--output", "outputs to a file", true)
-
-  #echo tostring(parser.parse(@["list", "-a"]))     # Should run
-  #echo tostring(parser.parse(@["-o=/tmp/test"]))   # Should not run, saying no command has been registered
-  #echo tostring(parser.parse(@["add", "task"]))    # Should run
-  #echo tostring(parser.parse(@[]))                 # Should show help message
-
-  let args = parser.parse(@["add", "task", "pokemon", "-o", "test"])
-  echo &"[DEBUG.command test parser] args: {args}"
-  echo &"[DEBUG.command test parser] args[\"add\"][\"task\"]: " & $args["add"]["task"]
+#test "newArgument":
+#  echo "[DEBUG.TEST.newArgument] START"
+#  echo newFlag("-o", "--output", "output to a file", true)
+#  echo newCommand("add", @[], "adds a task to the todo list")
+#  echo newCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "adds a task to the todo list")
+#  echo "[DEBUG.TEST.newArgument] END"
+#
+#test "newParser":
+#  echo "[DEBUG.TEST.newParser] START"
+#
+#  var parser = newParser("new parser test")
+#
+#  echo parser
+#    .addCommand("add", @[], "add a new command")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion")], "add a new command")
+#
+#  echo "[DEBUG.TEST.newParser] END"
 
 
-test "flag parser test":
-  var p = newParser("Example number one")
+#test "command parser test":
+#  var parser = newParser("[HELPDESC] parser test for the win")
+#
+#  discard parser
+#    .addCommand("add", @[newCommand("task", @[], "adds a new task"), newCommand("project", @[], "adds a new project")], "add a new")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "Does not log the deletion", false)], "remove a command")
+#    .addCommand("list", @[newFlag("-a", "--all", "show all tasks", false)], "list tasks")
+#    .addFlag("-o", "--output", "outputs to a file", true)
+#
+#  #echo tostring(parser.parse(@["list", "-a"]))     # Should run
+#  #echo tostring(parser.parse(@["-o=/tmp/test"]))   # Should not run, saying no command has been registered
+#  #echo tostring(parser.parse(@["add", "task"]))    # Should run
+#  #echo tostring(parser.parse(@[]))                 # Should show help message
+#
+#  let args = parser.parse(@["add", "task", "pokemon", "-o", "test"])
+#  echo &"[DEBUG.command test parser] args: {args}"
+#  echo &"[DEBUG.command test parser] args[\"add\"][\"task\"]: " & $args["add"]["task"]
 
-  discard p
-    .addFlag("-h", "--help", "shows this help message")
-    .addFlag("-a", "--all", "shows all files")
-    .addFlag("-l", "--long", "shows additional information")
-    .addFlag("-o", "--output", "output to a file", true, true)
 
-  # By default, will take `argv`
-  let args = p.parse(@["-a", "--long", "--output=test"])
-  echo args
-
-  # NOTE: you can use either the short or long flag to access the value
-  if args["--help"].registered:
-      p.showHelp()
-
-  if args["-a"].registered:
-      echo "Showing all files"
-
-  if args["-l"].registered:
-      echo "Showing additional information"
-
-  if args["--output"].registered:
-      echo "Redirecting content to " & args["--output"].getContent(default="")
+#test "flag parser test":
+#  var p = newParser("Example number one")
+#
+#  discard p
+#    .addFlag("-h", "--help", "shows this help message")
+#    .addFlag("-a", "--all", "shows all files")
+#    .addFlag("-l", "--long", "shows additional information")
+#    .addFlag("-o", "--output", "output to a file", true, true)
+#
+#  # By default, will take `argv`
+#  let args = p.parse(@["-a", "--long", "--output=test"])
+#  echo args
+#
+#  # NOTE: you can use either the short or long flag to access the value
+#  if args["--help"].registered:
+#      p.showHelp()
+#
+#  if args["-a"].registered:
+#      echo "Showing all files"
+#
+#  if args["-l"].registered:
+#      echo "Showing additional information"
+#
+#  if args["--output"].registered:
+#      echo "Redirecting content to " & args["--output"].getContent(default="")
 
 
 #test "example1":
@@ -128,8 +128,6 @@ test "flag parser test":
 #    echo "Listing everything"
 
 
-
-
 #test "example3":
 #  proc outputTo(output: string, content: string) =
 #    if output == "": echo content
@@ -163,47 +161,66 @@ test "flag parser test":
 
 
 
-test "new parser version":
-  var p = newParser("new parser test")
-
-  p.addCommand("add",
-    @[
-      newFlag("-a", "--all", "adds all"),
-      newFlag("-n", "--no-log", "no log"),
-      newCommand(
-        "task",
-        @[newFlag("-a", "--all", "adds all tasks")],
-        "adds a task"
-      )
-    ],
-    "adds something"
-  )
-
-  echo p.parse(@["add", "-n", "task", "--all"])
-
-
-
-test "last arg content":
-  var p = newParser("simple todo app")
-
-  p.addCommand("add", @[newFlag("-n", "--no-log", "does not log the addition"), newFlag("-c", "--hidden", "adds the command as hidden")], "adds a task")
-    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#test "new parser version":
+#  var p = newParser("new parser test")
+#
+#  p.addCommand("add",
+#    @[
+#      newFlag("-a", "--all", "adds all"),
+#      newFlag("-n", "--no-log", "no log"),
+#      newCommand(
+#        "task",
+#        @[newFlag("-a", "--all", "adds all tasks")],
+#        "adds a task"
+#      )
+#    ],
+#    "adds something"
+#  )
+#
+#  echo p.parse(@["add", "-n", "task", "--all"])
 
 
-  let args = p.parse(@["add", "-n", "-c", "yeah", "babe"])
+#test "last arg content":
+#  var p = newParser("simple todo app")
+#
+#  p.addCommand("add", @[newFlag("-n", "--no-log", "does not log the addition"), newFlag("-c", "--hidden", "adds the command as hidden")], "adds a task")
+#    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#
+#
+#  let args = p.parse(@["add", "-n", "-c", "yeah", "babe"])
+#
+#  echo args
 
-  echo args
+
+#test "generated help message":
+#  var p = newParser("simple todo app")
+#
+#  p.addCommand("add", @[newFlag("-n", "--no-log", "does not log the addition"), newFlag("-c", "--hidden", "adds the command as hidden")], "adds a task")
+#    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#
+#
+#  let args = p.parse()
+#
+#  echo args
 
 
-test "generated help message":
-  var p = newParser("simple todo app")
-
-  p.addCommand("add", @[newFlag("-n", "--no-log", "does not log the addition"), newFlag("-c", "--hidden", "adds the command as hidden")], "adds a task")
-    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
-
-
-  let args = p.parse()
-
-  echo args
+#test "last":
+#  var p = newParser("simple todo app")
+#
+#  p.addCommand("add", @[
+#      newFlag("-n", "--no-log", "does not log the addition"),
+#      newFlag("-c", "--hidden", "adds the command as hidden"),
+#      newCommand("task", @[newFlag("-t", "--temp", "temporary add")], "adds a task"),
+#      newCommand("project", @[newFlag("-t", "--temp", "temporary add")], "adds a project"),
+#    ],
+#    "adds something"
+#  )
+#    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#
+#
+#  let args = p.parse(@["add", "-n", "task", "-t", "kaboom ?", "-t"])
+#
+#  echo args

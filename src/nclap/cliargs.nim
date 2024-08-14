@@ -24,7 +24,7 @@ func `$`*(cliarg: CLIArg): string =
     r = cliarg.registered
     s = cliarg.subarguments
 
-  &"CLIArg(content: \"{c}\", registered: {r}, subarguments: {s})"
+  &"CLIArg(content: {c}, registered: {r}, subarguments: {s})"
 
 
 func `$`*(cliargs: CLIArgs): string =

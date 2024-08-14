@@ -141,7 +141,14 @@ proc parseFlags(
         depth += 1
         content = argv[depth]
 
-    res[current_flag.short] = CLIArg(content: some[string](content), registered: true, subarguments: initTable[string, CLIArg]())
+    res[current_flag.short] = CLIArg(
+      content: (
+        if content == "": none[string]()
+        else: some[string](content)
+      ),
+      registered: true,
+      subarguments: initTable[string, CLIArg]()
+    )
     res[current_flag.long] = res[current_flag.short]
 
     depth += 1
@@ -188,19 +195,26 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       #(argv_rest, new_depth) = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
       new_depth = parser.parseFlags(res, argv, depth, some[seq[Argument]](valid_arguments))
       argv_rest = argv[new_depth..^1]
-      (next, argv_rest2) = parser.parseArgs(argv_rest, new_depth, some[seq[Argument]](valid_arguments))
+      (next, argv_rest2) = parser.parseArgs(argv, new_depth, some[seq[Argument]](valid_arguments))
 
     return (concatCLIArgs(res, next), argv_rest)
   else:
     let
       current_command = valid_arguments.getCommand(current_argv)
       (rest, argv_rest) = (
-        if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), @[])
+        if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), argv[depth+1..^1])
+        elif len(getCommands(current_command.subcommands)) == 0: (
+          let new_depth = parser.parseFlags(res, argv, depth+1, some[seq[Argument]](current_command.subcommands))
+          (res, argv[new_depth..^1])
+        )
         else: parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
       )
 
     res[current_command.name] = CLIArg(
-      content: some[string](argv_rest.join(" ")),
+      content: (
+        if len(argv_rest) == 0: none[string]()
+        else: some[string](argv_rest.join(" "))
+      ),
       registered: true,
       subarguments: rest
     )
