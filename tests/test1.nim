@@ -241,7 +241,7 @@ test "last":
     .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
 
 
-  let args = p.parse(@["list"])
+  let args = p.parse(@["add", "--hidden", "project", "project1"])
   echo args
 
   if args["list"].registered:

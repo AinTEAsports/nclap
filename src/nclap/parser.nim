@@ -157,7 +157,7 @@ proc parseFlags(
 
 
 # NOTE: when debug finished, put this as func and not proc
-proc fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
+func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
   var res = initTable[string, CLIArg]()
 
   for argument in arguments:
@@ -178,14 +178,13 @@ proc fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
   res
 
 
-proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]], fill_res: bool = false): (CLIArgs, seq[string]) =
+proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
   if len(argv) == 0 or start >= len(argv):
     return (initTable[string, CLIArg](), @[])
 
   var
-    #res: CLIArgs = initTable[string, CLIArg]()
     valid_arguments = valid_arguments.get(parser.arguments)  # NOTE: get the value, or if there is none, take `parser.arguments` by default
-    res: CLIArgs = (if fill_res: fillCLIArgs(valid_arguments) else: initTable[string, CLIArg]())
+    res: CLIArgs = fillCLIArgs(valid_arguments)
     depth = start
 
   # NOTE: fill in all the arguments, with `registered: false` by default
@@ -239,8 +238,7 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   if len(argv) == 0:
     parser.showHelp()
 
-  # NOTE: if bugs, remove the true here and the argument `fill_res` in `parseArgs`, it will be less efficient until you find another solution
-  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]](), true)
+  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
   let
