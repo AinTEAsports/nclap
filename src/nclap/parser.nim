@@ -136,9 +136,17 @@ proc parseFlags(
         let splt = current_argv.split('=', maxsplit=1)
 
         name = splt[0]
-        content = splt[1]
+        content = (if len(splt) == 2: splt[1] else: "")  # NOTE: in case the user does `./program --output=`
       else:
         depth += 1
+
+        if depth >= len(argv):
+          # NOTE: I had a choice: either throw error or quit, I was too lazy to handle the error in `parseArgs` where `parseFlags` is called (but both are equivalent
+          # even though handling the error in `parseArgs` is way better since this function should not quit unexpectedly)
+          echo &"[ERROR.parse] Expected a value after the flag: {current_argv}"
+          quit INVALID_ARGUMENT_EXIT_CODE
+          #raise newException(ValueError, &"[ERROR.parse] Expected a value after the flag: {current_argv}")
+
         content = argv[depth]
 
     res[current_flag.short] = CLIArg(
@@ -149,8 +157,8 @@ proc parseFlags(
       registered: true,
       subarguments: initTable[string, CLIArg]()
     )
-    res[current_flag.long] = res[current_flag.short]
 
+    res[current_flag.long] = res[current_flag.short]
     depth += 1
 
   depth
@@ -208,6 +216,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       argv_rest = argv[new_depth..^1]
       (next, argv_rest2) = parser.parseArgs(argv, new_depth, some[seq[Argument]](valid_arguments))
 
+    # NOTE: This works, but if bugs (duplicates more precisely) try to put `argv_rest2` instead of `argv_rest`
     return (concatCLIArgs(res, next), argv_rest)
   else:
     let
@@ -215,8 +224,16 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       (rest, argv_rest) = (
         if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), argv[depth+1..^1])
         elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
-          let new_depth = parser.parseFlags(res, argv, depth+1, some[seq[Argument]](current_command.subcommands))
-          (res, argv[new_depth..^1])
+          var res_subargs = res[current_command.name].subarguments
+          let new_depth = parser.parseFlags(res_subargs, argv, depth+1, some[seq[Argument]](current_command.subcommands))
+
+          res[current_command.name] = CLIArg(
+            content: none[string](),
+            registered: true,
+            subarguments: res_subargs
+          )
+
+          (res_subargs, argv[new_depth..^1])
         else:
           parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
       )

@@ -84,24 +84,24 @@ import nclap/[
 #      echo "Redirecting content to " & args["--output"].getContent(default="")
 
 
-#test "example1":
-#  var p = newParser("example number 1, flags only")
-#
-#  # NOTE: p.addFlag(short, long, description=long, holds_value=false, required=false)
-#  p.addFlag("-h", "--help", "shows this help message", false)
-#    .addFlag("-vv", "--verbose", "shows additional informations", false)
-#    .addFlag("-o", "--output", "outputs to a file", true, true)
-#
-#  let args = p.parse()
-#
-#  # you can access the flag value with the short or the long version
-#  if args["--help"].registered:
-#    p.showHelp(exit_code=1)
-#
-#  if args["-vv"].registered:
-#    echo "Showing additional information"
-#
-#  echo "Output goes to: " & args["--output"].getContent(error=true)
+test "example1":
+  var p = newParser("example number 1, flags only")
+
+  # NOTE: p.addFlag(short, long, description=long, holds_value=false, required=false)
+  p.addFlag("-h", "--help", "shows this help message", false)
+    .addFlag("-vv", "--verbose", "shows additional informations", false)
+    .addFlag("-o", "--output", "outputs to a file", true, true)
+
+  let args = p.parse(@["-o=test"])
+
+  # you can access the flag value with the short or the long version
+  if args["--help"].registered:
+    p.showHelp(exit_code=0)
+
+  if args["-vv"].registered:
+    echo "Showing additional information"
+
+  echo "Output goes to: " & args["--output"].getContent(error=true)
 
 
 #test "example2":
@@ -226,32 +226,37 @@ import nclap/[
 #  echo args
 
 
-test "last":
-  var p = newParser("simple todo app")
-
-  p.addCommand("add", @[
-      newFlag("-n", "--no-log", "does not log the addition"),
-      newFlag("-c", "--hidden", "adds the command as hidden"),
-      newCommand("task", @[], "adds a task"),
-      newCommand("project", @[], "adds a project")
-    ],
-    "adds something"
-  )
-    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
-
-
-  let args = p.parse(@["add", "--hidden", "project", "project1"])
-  echo args
-
-  if args["list"].registered:
-    echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
-
-  if args["add"].registered:
-    # NOTE: if `-n` given, then no log
-    if not args["add"]["-n"].registered:
-      if args["add"]["task"].registered: echo "Adding task ", args["add"]["task"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
-      else: echo "Adding project ", args["add"]["project"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
-
-  if args["remove"].registered:
-    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
+#test "last":
+#  var p = newParser("simple todo app")
+#
+#  p.addCommand("add", @[
+#      newFlag("-n", "--no-log", "does not log the addition"),
+#      newFlag("-c", "--hidden", "adds the command as hidden"),
+#      newCommand("task", @[], "adds a task"),
+#      newCommand("project", @[newFlag("-t", "--temp", "temporary add")], "adds a project")
+#    ],
+#    "adds something"
+#  )
+#    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#
+#
+#  #let args = p.parse(@["add", "-c", "task", "task1"])
+#  #let args = p.parse(@["add", "-c", "project", "project1", "-t"])
+#  #let args = p.parse(@["list"])
+#  #let args = p.parse(@["list", "all"])
+#  #let args = p.parse(@["remove", "-n", "test"])
+#  let args = p.parse(@["remove", "test"])
+#  echo args
+#
+#  if args["list"].registered:
+#    echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
+#
+#  if args["add"].registered:
+#    # NOTE: if `-n` given, then no log
+#    if not args["add"]["-n"].registered:
+#      if args["add"]["task"].registered: echo "Adding task ", args["add"]["task"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+#      else: echo "Adding project ", args["add"]["project"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+#
+#  if args["remove"].registered:
+#    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
