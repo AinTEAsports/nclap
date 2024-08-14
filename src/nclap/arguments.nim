@@ -61,7 +61,7 @@ func `$`*(argument: Argument): string =
         s = argument.subcommands
         desc = argument.command_description
 
-      &"Command(name: \"{n}\", subcommands: \"{s}\", description: \"{desc}\")"
+      &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\")"
 
 
 func getFlags*(arguments: seq[Argument]): seq[Argument] =

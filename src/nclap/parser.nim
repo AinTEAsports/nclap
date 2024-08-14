@@ -156,29 +156,41 @@ proc parseFlags(
   depth
 
 
-proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
+# NOTE: when debug finished, put this as func and not proc
+proc fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
+  var res = initTable[string, CLIArg]()
+
+  for argument in arguments:
+    case argument.kind:
+      of Command:
+        if not res.hasKey(argument.name):
+          res[argument.name] = CLIArg(
+            content: none[string](),
+            registered: false,
+            subarguments: fillCLIArgs(argument.subcommands, depth+1)
+          )
+
+      of Flag:
+        if not res.hasKey(argument.short) or not res.hasKey(argument.long):
+          res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
+          res[argument.long] = res[argument.short]
+
+  res
+
+
+proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]], fill_res: bool = false): (CLIArgs, seq[string]) =
   if len(argv) == 0 or start >= len(argv):
     return (initTable[string, CLIArg](), @[])
 
   var
-    res: CLIArgs = initTable[string, CLIArg]()
+    #res: CLIArgs = initTable[string, CLIArg]()
     valid_arguments = valid_arguments.get(parser.arguments)  # NOTE: get the value, or if there is none, take `parser.arguments` by default
+    res: CLIArgs = (if fill_res: fillCLIArgs(valid_arguments) else: initTable[string, CLIArg]())
     depth = start
 
   # NOTE: fill in all the arguments, with `registered: false` by default
-  for argument in valid_arguments:
-    case argument.kind:
-      of Command:
-        if res.hasKey(argument.name):
-          continue
-
-        res[argument.name] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
-      of Flag:
-        if res.hasKey(argument.short) or res.hasKey(argument.long):
-          continue
-
-        res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
-        res[argument.long] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
+  #for argument in valid_arguments:
+  #  fillCLIArgs(argument)
 
 
   # NOTE: when valid_arguments is empty we are done
@@ -203,11 +215,11 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       current_command = valid_arguments.getCommand(current_argv)
       (rest, argv_rest) = (
         if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), argv[depth+1..^1])
-        elif len(getCommands(current_command.subcommands)) == 0: (
+        elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
           let new_depth = parser.parseFlags(res, argv, depth+1, some[seq[Argument]](current_command.subcommands))
           (res, argv[new_depth..^1])
-        )
-        else: parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
+        else:
+          parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
       )
 
     res[current_command.name] = CLIArg(
@@ -216,7 +228,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         else: some[string](argv_rest.join(" "))
       ),
       registered: true,
-      subarguments: rest
+      subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
     )
 
   (res, @[])
@@ -227,7 +239,8 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   if len(argv) == 0:
     parser.showHelp()
 
-  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
+  # NOTE: if bugs, remove the true here and the argument `fill_res` in `parseArgs`, it will be less efficient until you find another solution
+  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]](), true)
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
   let

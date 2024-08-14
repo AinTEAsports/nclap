@@ -206,7 +206,7 @@ import nclap/[
 #  echo args
 
 
-#test "last":
+#test "another":
 #  var p = newParser("simple todo app")
 #
 #  p.addCommand("add", @[
@@ -224,3 +224,34 @@ import nclap/[
 #  let args = p.parse(@["add", "-n", "task", "-t", "kaboom ?", "-t"])
 #
 #  echo args
+
+
+test "last":
+  var p = newParser("simple todo app")
+
+  p.addCommand("add", @[
+      newFlag("-n", "--no-log", "does not log the addition"),
+      newFlag("-c", "--hidden", "adds the command as hidden"),
+      newCommand("task", @[], "adds a task"),
+      newCommand("project", @[], "adds a project")
+    ],
+    "adds something"
+  )
+    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+
+
+  let args = p.parse(@["list"])
+  echo args
+
+  if args["list"].registered:
+    echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
+
+  if args["add"].registered:
+    # NOTE: if `-n` given, then no log
+    if not args["add"]["-n"].registered:
+      if args["add"]["task"].registered: echo "Adding task ", args["add"]["task"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+      else: echo "Adding project ", args["add"]["project"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+
+  if args["remove"].registered:
+    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
