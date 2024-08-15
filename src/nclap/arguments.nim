@@ -9,7 +9,7 @@ import cliargs
 
 const
   FLAG_HOLDS_VALUE_DEFAULT* = false
-  FLAG_REQUIRED_DEFAULT* = true
+  FLAG_REQUIRED_DEFAULT* = false
   COMMAND_REQUIRED_DEFAULT* = true
 
 type
