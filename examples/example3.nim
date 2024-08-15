@@ -11,7 +11,6 @@ proc outputTo(output: string, content: string) =
 
 var p = newParser("example number 2, commands only")
 
-# NOTE: p.addCommand(name, subcommands=@[], desc=name)
 p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
   .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion"), newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
   .addCommand("list", @[], "listing everything")

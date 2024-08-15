@@ -37,8 +37,9 @@ func addCommand*(
   parser: var Parser,
   name: string,
   subcommands: seq[Argument] = @[],
-  description: string = name
-): var Parser {.discardable.} = parser.addArgument(newCommand(name, subcommands, description))
+  description: string = name,
+  required: bool = COMMAND_REQUIRED_DEFAULT
+): var Parser {.discardable.} = parser.addArgument(newCommand(name, subcommands, description, required))
 
 
 func addFlag*(
@@ -46,8 +47,8 @@ func addFlag*(
   short: string,
   long: string = short,
   description: string = long,
-  holds_value: bool = HOLDS_VALUE_DEFAULT,
-  required: bool = REQUIRED_DEFAULT
+  holds_value: bool = FLAG_HOLDS_VALUE_DEFAULT,
+  required: bool = FLAG_REQUIRED_DEFAULT
 ): var Parser {.discardable.} = parser.addArgument(newFlag(short, long, description, holds_value, required))
 
 
@@ -157,14 +158,13 @@ proc parseFlags(
       registered: true,
       subarguments: initTable[string, CLIArg]()
     )
-
     res[current_flag.long] = res[current_flag.short]
+
     depth += 1
 
   depth
 
 
-# NOTE: when debug finished, put this as func and not proc
 func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
   var res = initTable[string, CLIArg]()
 
@@ -213,9 +213,9 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
   if current_argv == "":
     return (res, @[])
 
-
-
   assert current_argv != ""
+
+
 
   if not valid_arguments.isValidArgument(current_argv):
     echo &"[ERROR.parse] Invalid argument: '{current_argv}'"
@@ -268,11 +268,24 @@ func first[T](s: seq[T]): Option[T] =
   else: some[T](s[0])
 
 
-func checkForMissingCommand(valid_arguments: seq[Argument], cliargs: CLIArgs, prev_command_name: Argument): Option[Argument] =
-  if len(cliargs) == 0:
-    return none[Argument]()
+func checkForMissingCommand(
+  valid_arguments: seq[Argument],
+  cliargs: CLIArgs,
+  prev_command: Argument
+): (seq[Argument], Option[Argument]) =
+  # NOTE: if this is not met, this is the start of the call
+  if prev_command.name != "":
+    let required_subcommands = prev_command.subcommands
+      .getCommands()
+      .filter(command => command.command_required)
 
-  let registered = valid_arguments.getCommands().filter(arg => cliargs[arg.name].registered).first()
+    if len(cliargs) == 0 or len(required_subcommands) == 0:
+      return (@[], none[Argument]())
+
+  let registered = valid_arguments
+    .getCommands()
+    .filter(arg => arg.command_required and cliargs[arg.name].registered)
+    .first()
 
   if registered.isSome:
     checkForMissingCommand(
@@ -280,7 +293,39 @@ func checkForMissingCommand(valid_arguments: seq[Argument], cliargs: CLIArgs, pr
       cliargs[registered.get().name].subarguments,
       registered.get()
     )
-  else: some[Argument](prev_command_name)
+  else: (prev_command.subcommands.getCommands(), some[Argument](prev_command))
+
+
+func checkForMissingFlags(
+  valid_arguments: seq[Argument],
+  cliargs: CLIArgs,
+  prev_flag: Argument
+): (seq[Argument], Option[Argument]) =
+  if len(cliargs) == 0:
+    return (@[], none[Argument]())
+
+  let required_but_unregistered_flags = valid_arguments
+    .getFlags()
+    .filter(arg => arg.flag_required and not cliargs[arg.long].registered)
+
+  if len(required_but_unregistered_flags) > 0: (required_but_unregistered_flags, some[Argument](prev_flag))
+  else:
+    # NOTE: there should be (normally) only one at once, and it should exist
+    # since we check for missing required commands before checking for missing
+    # required flags
+    let registered_command = valid_arguments
+      .getCommands()
+      .filter(arg => arg.command_required and cliargs[arg.name].registered)
+      .first()
+
+    if registered_command.isNone: (@[], none[Argument]())
+    else:
+      checkForMissingFlags(
+        registered_command.get().subcommands,
+        cliargs[registered_command.get().name].subarguments,
+        registered_command.get()
+      )
+      
 
 
 proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
@@ -290,30 +335,34 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
-  let required_flags = collect(
-    for name, cliarg in res:
-      if not name.startsWith('-'): (false, false)  # NOTE: same as above
-      else: (true, parser.arguments.getFlag(name).required)
-  ).filter(pair => pair[0])
-
-  if len(required_flags) > 0 and required_flags.all(pair => not pair[1]):
-    # TODO: show which flags haven't been registered
-    echo &"[ERROR.parse] some flags haven't been registered even though required"
-    parser.showHelp(MISSING_REQUIRED_FLAGS_EXIT_CODE)
+  #let required_flags = collect(
+  #  for name, cliarg in res:
+  #    if not name.startsWith('-'): (false, false)  # NOTE: same as above
+  #    else: (true, parser.arguments.getFlag(name).flag_required)
+  #).filter(pair => pair[0])
+  #
+  #if len(required_flags) > 0 and required_flags.all(pair => not pair[1]):
+  #  # TODO: show which flags haven't been registered
+  #  echo &"[ERROR.parse] some flags haven't been registered even though required"
+  #  parser.showHelp(MISSING_REQUIRED_FLAGS_EXIT_CODE)
 
 
   # NOTE: this is for partial help message
-  let missing_command = checkForMissingCommand(parser.arguments, res, newCommand(""))
+  let (missing_commands, parent_command) = checkForMissingCommand(parser.arguments, res, newCommand(""))
 
   # NOTE: which means a command or subcommand is missing (one of the commands/subcommands had subcommands and none of them were registered)
-  if missing_command.isSome:
+  if len(missing_commands) > 0:
     # NOTE: which means no commands were registered at all
-    if missing_command.get().name == "":
-      parser.showHelp(MISSING_COMMAND_EXIT_CODE)
-    else:
-      echo parser.helpmsg
-      echo helpToString(missing_command.get())
-      quit(MISSING_COMMAND_EXIT_CODE)
+    echo parser.helpmsg
+    echo parent_command.get().helpToString()
+    quit(MISSING_COMMAND_EXIT_CODE)
+
+
+  let (missing_required_flags, _) = checkForMissingFlags(parser.arguments, res, newCommand(""))
+
+  if len(missing_required_flags) > 0:
+    echo &"[ERROR.parse] Missing one of: " & join(missing_required_flags.map(arg => &"\"{arg.long}\""), " | ")
+    quit(MISSING_REQUIRED_FLAGS_EXIT_CODE)
 
   res
 

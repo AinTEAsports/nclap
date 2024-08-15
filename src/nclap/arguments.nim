@@ -8,8 +8,9 @@ import std/[
 import cliargs
 
 const
-  HOLDS_VALUE_DEFAULT* = false
-  REQUIRED_DEFAULT* = true
+  FLAG_HOLDS_VALUE_DEFAULT* = false
+  FLAG_REQUIRED_DEFAULT* = true
+  COMMAND_REQUIRED_DEFAULT* = true
 
 type
   ArgumentType* = enum
@@ -23,25 +24,31 @@ type
         long*: string
         holds_value*: bool
         flag_description*: string
-        required*: bool
+        flag_required*: bool
 
       of Command:
         name*: string
         subcommands*: seq[Argument]
         command_description*: string
+        command_required*: bool
 
 
 func newFlag*(
   short: string,
   long: string = short,
   description: string = long,
-  holds_value: bool = HOLDS_VALUE_DEFAULT,
-  required: bool = REQUIRED_DEFAULT
+  holds_value: bool = FLAG_HOLDS_VALUE_DEFAULT,
+  required: bool = FLAG_REQUIRED_DEFAULT
 ): Argument =
-  Argument(kind: Flag, short: short, long: long, flag_description: description, holds_value: holds_value, required: required)
+  Argument(kind: Flag, short: short, long: long, flag_description: description, holds_value: holds_value, flag_required: required)
 
-func newCommand*(name: string, subcommands: seq[Argument] = @[], description: string = name): Argument =
-  Argument(kind: Command, name: name, subcommands: subcommands, command_description: description)
+func newCommand*(
+  name: string,
+  subcommands: seq[Argument] = @[],
+  description: string = name,
+  required: bool = COMMAND_REQUIRED_DEFAULT
+): Argument =
+  Argument(kind: Command, name: name, subcommands: subcommands, command_description: description, command_required: required)
 
 func `$`*(argument: Argument): string =
   case argument.kind
@@ -51,7 +58,7 @@ func `$`*(argument: Argument): string =
         l = argument.long
         h = argument.holds_value
         desc = argument.flag_description
-        r = argument.required
+        r = argument.flag_required
 
       &"Flag(short: \"{s}\", long: \"{l}\", holds_value: {h}, description: \"{desc}\", required: {r})"
 
@@ -60,8 +67,9 @@ func `$`*(argument: Argument): string =
         n = argument.name
         s = argument.subcommands
         desc = argument.command_description
+        r = argument.command_required
 
-      &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\")"
+      &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r})"
 
 
 func getFlags*(arguments: seq[Argument]): seq[Argument] =

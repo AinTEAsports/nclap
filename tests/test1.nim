@@ -237,8 +237,9 @@ test "last":
     ],
     "adds something"
   )
-    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones")], "lists tasks")
+    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones", required=false)], "lists tasks")
     .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+    .addFlag("-o", "--output", "outputs to a file", true, true)
 
 
   #let args = p.parse(@["add", "-c", "task", "task1"])
@@ -246,9 +247,11 @@ test "last":
   #let args = p.parse(@["list"])
   #let args = p.parse(@["list", "all"])
   #let args = p.parse(@["remove", "-n", "test"])
-  let args = p.parse(@[])
+  #let args = p.parse(@["--output=yeah", "list"])
+  let args = p.parse(@["-o=yeah", "list", "all"])
   echo args
 
+  echo "Output goes to: " & args["-o"].getContent(error=true)
   if args["list"].registered:
     echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
 

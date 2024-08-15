@@ -6,10 +6,10 @@ import nclap/[
 
 var p = newParser("example number 2, commands only")
 
-# NOTE: p.addCommand(name, subcommands=@[], desc=name)
+# NOTE: p.addCommand(name, subcommands=@[], desc=name, required=true)
 p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
   .addCommand("remove", @[newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
-  .addCommand("list", @[], "lists everything")
+  .addCommand("list", @[newCommand("all", @[], "lists everything", required=false)], "lists almost everything")
 
 let args = p.parse()
 
@@ -24,5 +24,4 @@ elif args["remove"].registered:
   else:
     echo "Removing project", args["remove"]["project"].getContent()
 else:
-  echo "Listing everything"
-
+  echo "Listing " & (if args["list"]["all"].registered: "" else: "almost ") & "everything"
