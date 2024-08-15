@@ -35,6 +35,8 @@ let args = p.parse()
 
 # you can access the flag value with the short or the long version
 if args["--help"].registered:
+  # NOTE: the `showHelp` message can be tuned,
+  # try to tinker with the parameters and see what happens
   p.showHelp(exit_code=1)
 
 if args["-vv"].registered:
@@ -131,11 +133,6 @@ $ ./example3 remove --no-log task "use python"
 Removing project use python
 ```
 
-
----
-
-## TODO list:
-- [ ] add a better automatically generated help message
 
 ---
 

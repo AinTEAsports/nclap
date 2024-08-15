@@ -71,17 +71,35 @@ func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
 
 
-func helpToString*(argument: Argument, depth: int = 0, tab: string = "  "): string =
-  let tab_prefix = tab.repeat(depth)
+func helpToString*(
+  argument: Argument,
+  depth: int = 0,
+  tabstring: string = "  ",
+  prefix: string = "",
+  surround_left: string = "[",
+  surround_right: string = "]",
+  separator: string = "|"
+): string =
+  let tabrepeat = tabstring.repeat(depth)
 
   case argument.kind:
-    of Flag: &"{tab_prefix}[{argument.short}|{argument.long}]\t\t{argument.flag_description}"
+    of Flag:
+      let
+        usage = &"{surround_left}{argument.short}{separator}{argument.long}{surround_right}"
+        desc = &"{argument.flag_description}"
+
+      &"{prefix}{tabrepeat}{usage}\t\t{desc}"
+
     of Command:
       var res = ""
 
-      res &= &"{tab_prefix}[{argument.name}]\t\t{argument.command_description}"
+      let
+        usage = &"{surround_left}{argument.name}{surround_right}"
+        desc = &"{argument.command_description}"
+
+      res &= &"{prefix}{tabrepeat}{usage}\t\t{desc}"
 
       for subargument in argument.subcommands:
-        res &= "\n" & subargument.helpToString(depth + 1, tab)
+        res &= "\n" & subargument.helpToString(depth+1)
 
       res

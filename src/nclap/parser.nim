@@ -200,8 +200,21 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
   #  fillCLIArgs(argument)
 
 
+
   # NOTE: when valid_arguments is empty we are done
   var current_argv = argv[depth]
+
+  # NOTE: skip while current argv is empty string
+  while depth < len(argv) and current_argv == "":
+    current_argv = argv[depth]
+    depth += 1
+
+  # NOTE: then no more arguments, everything was empty
+  if current_argv == "":
+    return (res, @[])
+
+
+
   assert current_argv != ""
 
   if not valid_arguments.isValidArgument(current_argv):
@@ -250,6 +263,25 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
   (res, @[])
 
 
+func first[T](s: seq[T]): Option[T] =
+  if len(s) == 0: none[T]()
+  else: some[T](s[0])
+
+
+func checkForMissingCommand(valid_arguments: seq[Argument], cliargs: CLIArgs, prev_command_name: Argument): Option[Argument] =
+  if len(cliargs) == 0:
+    return none[Argument]()
+
+  let registered = valid_arguments.getCommands().filter(arg => cliargs[arg.name].registered).first()
+
+  if registered.isSome:
+    checkForMissingCommand(
+      registered.get().subcommands,
+      cliargs[registered.get().name].subarguments,
+      registered.get()
+    )
+  else: some[Argument](prev_command_name)
+
 
 proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   if len(argv) == 0:
@@ -258,27 +290,30 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
   # NOTE: check if at least one principal command has been regsitered, if not then error
-  let
-    registered_commands = collect(
-      for name, cliarg in res:
-        if name.startsWith('-'): (false, false)  # NOTE: the second one doesn't matter since we check the second one only if the first one is true
-        else: (true, cliarg.registered)
-    ).filter(pair => pair[0])
-
-    required_flags = collect(
-      for name, cliarg in res:
-        if not name.startsWith('-'): (false, false)  # NOTE: same as above
-        else: (true, parser.arguments.getFlag(name).required)
-    ).filter(pair => pair[0])
-
-  if len(registered_commands) > 0 and registered_commands.all(pair => not pair[1]):
-    echo &"[ERROR.parse] No command has been registered"
-    parser.showHelp(MISSING_COMMAND_EXIT_CODE)
+  let required_flags = collect(
+    for name, cliarg in res:
+      if not name.startsWith('-'): (false, false)  # NOTE: same as above
+      else: (true, parser.arguments.getFlag(name).required)
+  ).filter(pair => pair[0])
 
   if len(required_flags) > 0 and required_flags.all(pair => not pair[1]):
     # TODO: show which flags haven't been registered
     echo &"[ERROR.parse] some flags haven't been registered even though required"
     parser.showHelp(MISSING_REQUIRED_FLAGS_EXIT_CODE)
+
+
+  # NOTE: this is for partial help message
+  let missing_command = checkForMissingCommand(parser.arguments, res, newCommand(""))
+
+  # NOTE: which means a command or subcommand is missing (one of the commands/subcommands had subcommands and none of them were registered)
+  if missing_command.isSome:
+    # NOTE: which means no commands were registered at all
+    if missing_command.get().name == "":
+      parser.showHelp(MISSING_COMMAND_EXIT_CODE)
+    else:
+      echo parser.helpmsg
+      echo helpToString(missing_command.get())
+      quit(MISSING_COMMAND_EXIT_CODE)
 
   res
 
