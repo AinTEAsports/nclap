@@ -226,40 +226,53 @@ import nclap/[
 #  echo args
 
 
-test "last":
-  var p = newParser("simple todo app")
+#test "last":
+#  var p = newParser("simple todo app")
+#
+#  p.addCommand("add", @[
+#      newFlag("-n", "--no-log", "does not log the addition"),
+#      newFlag("-c", "--hidden", "adds the command as hidden"),
+#      newCommand("task", @[], "adds a task"),
+#      newCommand("project", @[newFlag("-t", "--temp", "temporary add")], "adds a project")
+#    ],
+#    "adds something"
+#  )
+#    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones", required=false)], "lists tasks")
+#    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
+#    .addFlag("-o", "--output", "outputs to a file", true, true)
+#
+#
+#  #let args = p.parse(@["add", "-c", "task", "task1"])
+#  #let args = p.parse(@["add", "-c", "project", "project1", "-t"])
+#  #let args = p.parse(@["list"])
+#  #let args = p.parse(@["list", "all"])
+#  #let args = p.parse(@["remove", "-n", "test"])
+#  #let args = p.parse(@["--output=yeah", "list"])
+#  let args = p.parse(@["-o=yeah", "list", "all"])
+#  echo args
+#
+#  echo "Output goes to: " & args["-o"].getContent(error=true)
+#  if args["list"].registered:
+#    echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
+#
+#  if args["add"].registered:
+#    # NOTE: if `-n` given, then no log
+#    if not args["add"]["-n"].registered:
+#      if args["add"]["task"].registered: echo "Adding task ", args["add"]["task"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+#      else: echo "Adding project ", args["add"]["project"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
+#
+#  if args["remove"].registered:
+#    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
 
-  p.addCommand("add", @[
-      newFlag("-n", "--no-log", "does not log the addition"),
-      newFlag("-c", "--hidden", "adds the command as hidden"),
-      newCommand("task", @[], "adds a task"),
-      newCommand("project", @[newFlag("-t", "--temp", "temporary add")], "adds a project")
-    ],
-    "adds something"
-  )
-    .addCommand("list", @[newCommand("all", @[], "lists all tasks, even hidden ones", required=false)], "lists tasks")
-    .addCommand("remove", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task")
-    .addFlag("-o", "--output", "outputs to a file", true, true)
 
+test "compact shortflags":
+  var p = newParser("compact shortflags test", enforce_short=false)
 
-  #let args = p.parse(@["add", "-c", "task", "task1"])
-  #let args = p.parse(@["add", "-c", "project", "project1", "-t"])
-  #let args = p.parse(@["list"])
-  #let args = p.parse(@["list", "all"])
-  #let args = p.parse(@["remove", "-n", "test"])
-  #let args = p.parse(@["--output=yeah", "list"])
-  let args = p.parse(@["-o=yeah", "list", "all"])
+  p.addFlag("-a", "--all", "all ?")
+    .addFlag("-b", "--boolean", "show boolean format ? what are those flags dude")
+    .addFlag("-c", "--check", "check what bro ? your capacity to write tests ?")
+    .addFlag("-o", "--output", "finally a normal flag", holds_value=true, required=true)
+
+  let args = p.parse(@["-abco=yeah"])
+
   echo args
-
-  echo "Output goes to: " & args["-o"].getContent(error=true)
-  if args["list"].registered:
-    echo "Listing ", (if args["list"]["all"].registered: "" else: "almost "), "everything"
-
-  if args["add"].registered:
-    # NOTE: if `-n` given, then no log
-    if not args["add"]["-n"].registered:
-      if args["add"]["task"].registered: echo "Adding task ", args["add"]["task"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
-      else: echo "Adding project ", args["add"]["project"].getContent(), (if args["add"]["-c"].registered: " as hidden" else: "")
-
-  if args["remove"].registered:
-    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()

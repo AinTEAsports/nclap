@@ -10,27 +10,46 @@ import std/[
 
 import arguments
 import cliargs
+import utils
 
 const
-  INVALID_ARGUMENT_EXIT_CODE = 1
-  MISSING_COMMAND_EXIT_CODE = 2
-  MISSING_REQUIRED_FLAGS_EXIT_CODE = 3
+  INVALID_ARGUMENT_EXIT_CODE* = 1
+  MISSING_COMMAND_EXIT_CODE* = 2
+  MISSING_REQUIRED_FLAGS_EXIT_CODE* = 3
+  DEFAULT_ENFORCE_SHORT* = false
 
 type
   Parser* = object
     arguments: seq[Argument]
+    enforce_short: bool
     helpmsg: string
 
 
-proc newParser*(help_message: string = ""): Parser =
-  Parser(
-    arguments: @[],
-    helpmsg: help_message
-  )
+func newParser*(
+  help_message: string = "",
+  enforce_short: bool = DEFAULT_ENFORCE_SHORT
+): Parser =
+  Parser(arguments: @[], enforce_short: enforce_short, helpmsg: help_message)
 
 
 func addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
-  (parser.arguments.add(argument); parser)
+  if parser.enforce_short:
+    case argument.kind:
+      of Flag:
+        # NOTE: 1 for the "-" and 1 for the character, 1+1=2 (I'm a genius I know)
+        if len(argument.short) != 2:
+          raise newException(
+            ValueError,
+            &"[ERROR.invalid-argument] `parser.enforce_short` is true, but the short flag is more than 1 character: {argument.short}"
+          )
+        else: parser.arguments.add(argument)
+      of Command:
+        parser.arguments.add(argument)
+  else: parser.arguments.add(argument)
+
+  parser
+
+
 
 
 func addCommand*(
@@ -332,19 +351,9 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   if len(argv) == 0:
     parser.showHelp()
 
-  let (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
-
-  # NOTE: check if at least one principal command has been regsitered, if not then error
-  #let required_flags = collect(
-  #  for name, cliarg in res:
-  #    if not name.startsWith('-'): (false, false)  # NOTE: same as above
-  #    else: (true, parser.arguments.getFlag(name).flag_required)
-  #).filter(pair => pair[0])
-  #
-  #if len(required_flags) > 0 and required_flags.all(pair => not pair[1]):
-  #  # TODO: show which flags haven't been registered
-  #  echo &"[ERROR.parse] some flags haven't been registered even though required"
-  #  parser.showHelp(MISSING_REQUIRED_FLAGS_EXIT_CODE)
+  let
+    argv = (if parser.enforce_short: expandArgvShortFlags(argv) else: argv)
+    (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
 
   # NOTE: this is for partial help message
@@ -358,6 +367,7 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
     quit(MISSING_COMMAND_EXIT_CODE)
 
 
+  # NOTE: this is to check if every required flags has been registered
   let (missing_required_flags, _) = checkForMissingFlags(parser.arguments, res, newCommand(""))
 
   if len(missing_required_flags) > 0:
