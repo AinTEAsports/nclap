@@ -248,7 +248,7 @@ import nclap/[
 #  #let args = p.parse(@["list", "all"])
 #  #let args = p.parse(@["remove", "-n", "test"])
 #  #let args = p.parse(@["--output=yeah", "list"])
-#  let args = p.parse(@["-o=yeah", "list", "all"])
+#  let args = p.parse(@["-o=yeah", "add", "task"])
 #  echo args
 #
 #  echo "Output goes to: " & args["-o"].getContent(error=true)
@@ -265,14 +265,33 @@ import nclap/[
 #    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
 
 
-test "compact shortflags":
-  var p = newParser("compact shortflags test", enforce_short=false)
+#test "compact shortflags":
+#  var p = newParser("compact shortflags test", enforce_short=true)
+#
+#  p.addFlag("-a", "--all", "all ?")
+#    .addFlag("-b", "--boolean", "show boolean format ? what are those flags dude")
+#    .addFlag("-c", "--check", "check what bro ? your capacity to write tests ?")
+#    .addFlag("-o", "--output", "finally a normal flag", holds_value=true, required=true)
+#
+#  let args = p.parse(@["-abco=yeah"])
+#
+#  echo args
 
-  p.addFlag("-a", "--all", "all ?")
-    .addFlag("-b", "--boolean", "show boolean format ? what are those flags dude")
-    .addFlag("-c", "--check", "check what bro ? your capacity to write tests ?")
-    .addFlag("-o", "--output", "finally a normal flag", holds_value=true, required=true)
 
-  let args = p.parse(@["-abco=yeah"])
+test "customizing help message":
+  let settings: HelpSettings = (
+    tabstring: "  ",
+    prefix: "-> ",
+    surround_left: "{",
+    surround_right: "}",
+    separator: ", ",
+  )
+  var p = newParser("customizing help message", settings)
 
-  echo args
+  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
+    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse()
+

@@ -11,8 +11,23 @@ const
   FLAG_HOLDS_VALUE_DEFAULT* = false
   FLAG_REQUIRED_DEFAULT* = false
   COMMAND_REQUIRED_DEFAULT* = true
+  DEFAULT_SHOWHELP_SETTINGS* = (
+    tabstring: "  ",
+    prefix: "",
+    surround_left: "[",
+    surround_right: "]",
+    separator: "|"
+  )
 
 type
+  HelpSettings* = tuple[
+    tabstring: string,
+    prefix: string,
+    surround_left: string,
+    surround_right: string,
+    separator: string
+  ]
+
   ArgumentType* = enum
     Command
     Flag
@@ -81,14 +96,12 @@ func getCommands*(arguments: seq[Argument]): seq[Argument] =
 
 func helpToString*(
   argument: Argument,
+  settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
   depth: int = 0,
-  tabstring: string = "  ",
-  prefix: string = "",
-  surround_left: string = "[",
-  surround_right: string = "]",
-  separator: string = "|"
 ): string =
-  let tabrepeat = tabstring.repeat(depth)
+  let
+    (tabstring, prefix, surround_left, surround_right, separator) = settings
+    tabrepeat = tabstring.repeat(depth)
 
   case argument.kind:
     of Flag:
@@ -108,6 +121,6 @@ func helpToString*(
       res &= &"{prefix}{tabrepeat}{usage}\t\t{desc}"
 
       for subargument in argument.subcommands:
-        res &= "\n" & subargument.helpToString(depth+1)
+        res &= "\n" & subargument.helpToString(settings=settings, depth=depth+1)
 
       res

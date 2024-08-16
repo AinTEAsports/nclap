@@ -136,5 +136,57 @@ Removing project use python
 
 ---
 
+## Tips
+
+#### Customizing the help message
+You can customize the parser help message:
+```nim
+let settings: HelpSettings = (
+  tabstring: "  ",
+  prefix: "-> ",
+  surround_left: "{",
+  surround_right: "}",
+  separator: ", ",
+)
+var p = newParser("customizing help message", settings)
+
+p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+  .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
+  .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
+  .addFlag("-o", "--output", "outputs the content to a file", true)
+
+let args = p.parse()
+```
+```sh
+$ ./program
+customizing help message
+-> {add}
+->   {task}             adds a task
+->   {project}          adds a project
+-> {remove}
+->   {task}             removes a task
+->     {-n, --no-log}           does not log the deletion
+->   {project}          removes a project
+-> {list}               listing tasks and projects
+->   {-a, --all}                show even hidden tasks/projects
+-> {-o, --output}               outputs the content to a file
+```
+Feel free to tinker with these to find the perfect combination
+
+
+#### Compact short flags
+You can use the `enforce_shortflag=true` in `newParser` to enforce flags short version to be at most 1 character long
+(for example `-a`, `-o`, but not `-type`)
+
+This will enable compacting short flags when parsing.
+For example, `./program -abc` will be expanded as `./program -a -b -c`
+`./program -abco=output_file` will be expanded as `./program -a -b -c -o=output_file`
+
+By default this option is off, letting you have short flags as long as you want
+(not too long, for example `-outputtoacertainfileaftercallingandthisflagisbecomingabittoolong` a tiny bit too long)
+but will not enable compacting short flags (for example `./program -abc` will stay `./program -abc`)
+
+---
+
 ## Bugs and fixes:
-If you encounter any bug, issue or suggestion, open an issue and I'll try to respond (or even better, make a PR)
+If you encounter any bug, issue or suggestion about anything, please open an issue or a PR

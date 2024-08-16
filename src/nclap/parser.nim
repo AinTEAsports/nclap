@@ -23,13 +23,15 @@ type
     arguments: seq[Argument]
     enforce_short: bool
     helpmsg: string
+    help_settings: HelpSettings
 
 
 func newParser*(
   help_message: string = "",
-  enforce_short: bool = DEFAULT_ENFORCE_SHORT
+  settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
+  enforce_short: bool = DEFAULT_ENFORCE_SHORT,
 ): Parser =
-  Parser(arguments: @[], enforce_short: enforce_short, helpmsg: help_message)
+  Parser(arguments: @[], enforce_short: enforce_short, helpmsg: help_message, help_settings: settings)
 
 
 func addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
@@ -39,7 +41,7 @@ func addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
         # NOTE: 1 for the "-" and 1 for the character, 1+1=2 (I'm a genius I know)
         if len(argument.short) != 2:
           raise newException(
-            ValueError,
+            FieldDefect,
             &"[ERROR.invalid-argument] `parser.enforce_short` is true, but the short flag is more than 1 character: {argument.short}"
           )
         else: parser.arguments.add(argument)
@@ -58,7 +60,11 @@ func addCommand*(
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT
-): var Parser {.discardable.} = parser.addArgument(newCommand(name, subcommands, description, required))
+): var Parser {.discardable.} =
+  if name.startsWith('-'):
+    raise newException(FieldDefect, &"[ERROR.invalid-argument] A command cannot start with a '-': {name}")
+
+  parser.addArgument(newCommand(name, subcommands, description, required))
 
 
 func addFlag*(
@@ -68,18 +74,27 @@ func addFlag*(
   description: string = long,
   holds_value: bool = FLAG_HOLDS_VALUE_DEFAULT,
   required: bool = FLAG_REQUIRED_DEFAULT
-): var Parser {.discardable.} = parser.addArgument(newFlag(short, long, description, holds_value, required))
+): var Parser {.discardable.} =
+  # NOTE: this is a design choice, long flags can start with only a dash,
+  # since if no long flag is given, the long flag will just be the short flag
+  if not (short.startsWith('-') and long.startsWith('-')):
+    raise newException(FieldDefect, &"[ERROR.invalid-argument] A flag must start with a '-': {short}|{long}")
+
+  parser.addArgument(newFlag(short, long, description, holds_value, required))
 
 
 func `$`*(parser: Parser): string =
   &"Parser(arguments: {parser.arguments}, helpmsg: \"{parser.helpmsg}\")"
 
 
-proc showHelp*(parser: Parser, exit_code: int = 0) =
+proc showHelp*(
+  parser: Parser,
+  exit_code: int = 0,
+) =
   echo parser.helpmsg
 
   for arg in parser.arguments:
-    echo helpToString(arg)
+    echo helpToString(arg, parser.help_settings)
 
   quit(exit_code)
 
@@ -113,7 +128,7 @@ func getCommand(arguments: seq[Argument], argument_name: string): Argument =
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(ValueError, &"Invalid command: {argument_name}")
+  raise newException(FieldDefect, &"Invalid command: {argument_name}")
 
 
 func getFlag(arguments: seq[Argument], argument_name: string): Argument =
@@ -124,7 +139,7 @@ func getFlag(arguments: seq[Argument], argument_name: string): Argument =
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(ValueError, &"Invalid flag: {argument_name}")
+  raise newException(FieldDefect, &"Invalid flag: {argument_name}")
 
 
 
@@ -292,28 +307,30 @@ func checkForMissingCommand(
   cliargs: CLIArgs,
   prev_command: Argument
 ): (seq[Argument], Option[Argument]) =
-  # NOTE: if this is not met, this is the start of the call
-  if prev_command.name != "":
-    let required_subcommands = prev_command.subcommands
-      .getCommands()
-      .filter(command => command.command_required)
+  let
+    commands = valid_arguments.getCommands()
+    required_and_registered = commands
+      .filter(cmd => cmd.command_required and cliargs[cmd.name].registered)
 
-    if len(cliargs) == 0 or len(required_subcommands) == 0:
-      return (@[], none[Argument]())
+  # NOTE: either no command registered or one since at most one command
+  # can be registered per level
+  assert len(required_and_registered) <= 1
 
-  let registered = valid_arguments
-    .getCommands()
-    .filter(arg => arg.command_required and cliargs[arg.name].registered)
-    .first()
+  if len(required_and_registered) == 1:
+    let cmd = required_and_registered[0]
 
-  if registered.isSome:
     checkForMissingCommand(
-      registered.get().subcommands,
-      cliargs[registered.get().name].subarguments,
-      registered.get()
+      cmd.subcommands,
+      cliargs[cmd.name].subarguments,
+      cmd
     )
-  else: (prev_command.subcommands.getCommands(), some[Argument](prev_command))
+  else:
+    (
+      commands.filter(cmd => cmd.command_required and not cliargs[cmd.name].registered),
+      some[Argument](prev_command)
+    )
 
+  
 
 func checkForMissingFlags(
   valid_arguments: seq[Argument],
@@ -362,9 +379,12 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   # NOTE: which means a command or subcommand is missing (one of the commands/subcommands had subcommands and none of them were registered)
   if len(missing_commands) > 0:
     # NOTE: which means no commands were registered at all
-    echo parser.helpmsg
-    echo parent_command.get().helpToString()
-    quit(MISSING_COMMAND_EXIT_CODE)
+    if parent_command.get().name == "":
+      parser.showHelp(exit_code=MISSING_COMMAND_EXIT_CODE)
+    else:
+      echo parser.helpmsg
+      echo parent_command.get().helpToString(settings=parser.help_settings)
+      quit(MISSING_COMMAND_EXIT_CODE)
 
 
   # NOTE: this is to check if every required flags has been registered
@@ -375,6 +395,7 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
     quit(MISSING_REQUIRED_FLAGS_EXIT_CODE)
 
   res
+
 
 proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
