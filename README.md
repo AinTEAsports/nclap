@@ -142,11 +142,13 @@ Removing project use python
 You can customize the parser help message:
 ```nim
 let settings: HelpSettings = (
-  tabstring: "  ",
-  prefix: "-> ",
-  surround_left: "{",
-  surround_right: "}",
-  separator: ", ",
+    tabstring: "│   ",
+    prefix_pretab: "-> ",
+    prefix_posttab: "├─ ",
+    prefix_posttab_last: "└─ ",
+    surround_left: "{",
+    surround_right: "}",
+    separator: ", ",
 )
 var p = newParser("customizing help message", settings)
 
@@ -160,17 +162,19 @@ let args = p.parse()
 ```sh
 $ ./program
 customizing help message
--> {add}
-->   {task}             adds a task
-->   {project}          adds a project
--> {remove}
-->   {task}             removes a task
-->     {-n, --no-log}           does not log the deletion
-->   {project}          removes a project
--> {list}               listing tasks and projects
-->   {-a, --all}                show even hidden tasks/projects
--> {-o, --output}               outputs the content to a file
+-> ├─ {add}
+-> │   ├─ {task}                adds a task
+-> │   └─ {project}             adds a project
+-> ├─ {remove}
+-> │   ├─ {task}                removes a task
+-> │   │   └─ {-n, --no-log}            does not log the deletion
+-> │   └─ {project}             removes a project
+-> ├─ {list}            listing tasks and projects
+-> │   └─ {-a, --all}           show even hidden tasks/projects
+-> └─ {-o, --output}            outputs the content to a file
 ```
+It might not be the most beautiful help message, but at least it covers every option that are availible
+for the moment.<br>
 Feel free to tinker with these to find the perfect combination
 
 
@@ -183,7 +187,7 @@ For example, `./program -abc` will be expanded as `./program -a -b -c`
 `./program -abco=output_file` will be expanded as `./program -a -b -c -o=output_file`
 
 By default this option is off, letting you have short flags as long as you want
-(not too long, for example `-outputtoacertainfileaftercallingandthisflagisbecomingabittoolong` a tiny bit too long)
+(not too long though, for example `-outputtoacertainfileaftercallingandthisflagisbecomingabittoolong` is a tiny bit too long)
 but will not enable compacting short flags (for example `./program -abc` will stay `./program -abc`)
 
 ---

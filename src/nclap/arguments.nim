@@ -13,7 +13,9 @@ const
   COMMAND_REQUIRED_DEFAULT* = true
   DEFAULT_SHOWHELP_SETTINGS* = (
     tabstring: "  ",
-    prefix: "",
+    prefix_pretab: "",
+    prefix_posttab: "",
+    prefix_posttab_last: "",
     surround_left: "[",
     surround_right: "]",
     separator: "|"
@@ -22,7 +24,9 @@ const
 type
   HelpSettings* = tuple[
     tabstring: string,
-    prefix: string,
+    prefix_pretab: string,
+    prefix_posttab: string,
+    prefix_posttab_last: string,
     surround_left: string,
     surround_right: string,
     separator: string
@@ -94,14 +98,28 @@ func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
 
 
-func helpToString*(
+func helpToStringAux(
   argument: Argument,
   settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
   depth: int = 0,
+  is_first: bool = true,
+  is_last: bool = false
 ): string =
   let
-    (tabstring, prefix, surround_left, surround_right, separator) = settings
+    (
+      tabstring,
+      prefix_pretab,
+      prefix_posttab,
+      prefix_posttab_last,
+      surround_left,
+      surround_right,
+      separator
+    ) = settings
     tabrepeat = tabstring.repeat(depth)
+    posttab = (
+      if is_last or argument.kind == Flag: prefix_posttab_last
+      else: prefix_posttab
+    )
 
   case argument.kind:
     of Flag:
@@ -109,7 +127,8 @@ func helpToString*(
         usage = &"{surround_left}{argument.short}{separator}{argument.long}{surround_right}"
         desc = &"{argument.flag_description}"
 
-      &"{prefix}{tabrepeat}{usage}\t\t{desc}"
+      # NOTE: no subcommands to a flag, it is the first but more importantly the last
+      &"{prefix_pretab}{tabrepeat}{posttab}{usage}\t\t{desc}"
 
     of Command:
       var res = ""
@@ -118,9 +137,20 @@ func helpToString*(
         usage = &"{surround_left}{argument.name}{surround_right}"
         desc = &"{argument.command_description}"
 
-      res &= &"{prefix}{tabrepeat}{usage}\t\t{desc}"
+      res &= &"{prefix_pretab}{tabrepeat}{posttab}{usage}\t\t{desc}"
 
-      for subargument in argument.subcommands:
-        res &= "\n" & subargument.helpToString(settings=settings, depth=depth+1)
+      for i in 0..<len(argument.subcommands):
+        let
+          subargument = argument.subcommands[i]
+          is_last_argument = (i == len(argument.subcommands)-1)
+
+        res &= "\n" & subargument.helpToStringAux(settings=settings, depth=depth+1, is_last=is_last_argument)
 
       res
+
+
+func helpToString*(
+  argument: Argument,
+  settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
+): string =
+  helpToStringAux(argument, settings, 0, true, false)

@@ -280,8 +280,10 @@ import nclap/[
 
 test "customizing help message":
   let settings: HelpSettings = (
-    tabstring: "  ",
-    prefix: "-> ",
+    tabstring: "│   ",
+    prefix_pretab: "-> ",
+    prefix_posttab: "├─ ",
+    prefix_posttab_last: "└─ ",
     surround_left: "{",
     surround_right: "}",
     separator: ", ",
