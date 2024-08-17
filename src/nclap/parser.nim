@@ -24,14 +24,22 @@ type
     enforce_short: bool
     helpmsg: string
     help_settings: HelpSettings
+    no_colors: bool
 
 
 func newParser*(
   help_message: string = "",
   settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
   enforce_short: bool = DEFAULT_ENFORCE_SHORT,
+  no_colors: bool = false,
 ): Parser =
-  Parser(arguments: @[], enforce_short: enforce_short, helpmsg: help_message, help_settings: settings)
+  Parser(
+    arguments: @[],
+    enforce_short: enforce_short,
+    helpmsg: help_message,
+    help_settings: settings,
+    no_colors: no_colors
+  )
 
 
 func addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
@@ -178,7 +186,12 @@ proc parseFlags(
         if depth >= len(argv):
           # NOTE: I had a choice: either throw error or quit, I was too lazy to handle the error in `parseArgs` where `parseFlags` is called (but both are equivalent
           # even though handling the error in `parseArgs` is way better since this function should not quit unexpectedly)
-          echo &"[ERROR.parse] Expected a value after the flag: {current_argv}"
+          #echo &"[ERROR.parse] Expected a value after the flag: {current_argv}"
+          echo error(
+            "ERROR.parse",
+            &"Expected a value after the flag: {current_argv}",
+            no_colors=parser.no_colors
+          )
           quit INVALID_ARGUMENT_EXIT_CODE
           #raise newException(ValueError, &"[ERROR.parse] Expected a value after the flag: {current_argv}")
 
@@ -252,7 +265,11 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
 
   if not valid_arguments.isValidArgument(current_argv):
-    echo &"[ERROR.parse] Invalid argument: '{current_argv}'"
+    echo error(
+      "ERROR.parse",
+      &"Invalid argument: '{current_argv}'",
+      no_colors=parser.no_colors
+    )
     quit INVALID_ARGUMENT_EXIT_CODE
 
   # NOTE: from this point we assert the current argument is valid, it exists
@@ -391,7 +408,11 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let (missing_required_flags, _) = checkForMissingFlags(parser.arguments, res, newCommand(""))
 
   if len(missing_required_flags) > 0:
-    echo &"[ERROR.parse] Missing one of: " & join(missing_required_flags.map(arg => &"\"{arg.long}\""), " | ")
+    echo error(
+      "ERROR.parse",
+      "Missing one of: " & join(missing_required_flags.map(arg => &"\"{arg.long}\""), " | "),
+      no_colors=parser.no_colors
+    )
     quit(MISSING_REQUIRED_FLAGS_EXIT_CODE)
 
   res

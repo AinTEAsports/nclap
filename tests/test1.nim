@@ -296,4 +296,4 @@ test "customizing help message":
     .addFlag("-o", "--output", "outputs the content to a file", true)
 
   let args = p.parse()
-
+  echo args

@@ -4,6 +4,15 @@ import std/[
   sugar,
 ]
 
+const
+  DEFAULT_NO_COLORS* = false
+  COLORS* = (
+    reset: "\e[0m",
+    bold_black: "\e[1;30m",
+    red: "\e[0;91m",
+  )
+
+
 # NOTE: it should not contain =
 func expandCompactArgv(compact_argv: string): seq[string] =
   assert not compact_argv.contains('=')
@@ -49,3 +58,13 @@ func expandArgvShortFlags*(argv: seq[string]): seq[string] =
     else: res.add(arg)
 
   res
+
+
+func error*(error_header, error_message: string, no_colors: bool = DEFAULT_NO_COLORS): string =
+  (
+    if no_colors: &"[{error_header}]"
+    else:
+      &"{COLORS.bold_black}[{COLORS.reset}" &
+      &"{COLORS.red}{error_header}{COLORS.reset}" &
+      &"{COLORS.bold_black}]{COLORS.reset}"
+  ) & " " & error_message
