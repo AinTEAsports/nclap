@@ -13,11 +13,7 @@ import std/strformat
 #import nclap/arguments
 #import nclap/cliargs
 
-import nclap/[
-  parser,
-  arguments,
-  cliargs
-]
+import nclap/[parser, arguments, cliargs]
 
 #test "newArgument":
 #  echo "[DEBUG.TEST.newArgument] START"
@@ -37,7 +33,6 @@ import nclap/[
 #
 #  echo "[DEBUG.TEST.newParser] END"
 
-
 #test "command parser test":
 #  var parser = newParser("[HELPDESC] parser test for the win")
 #
@@ -55,7 +50,6 @@ import nclap/[
 #  let args = parser.parse(@["add", "task", "pokemon", "-o", "test"])
 #  echo &"[DEBUG.command test parser] args: {args}"
 #  echo &"[DEBUG.command test parser] args[\"add\"][\"task\"]: " & $args["add"]["task"]
-
 
 #test "flag parser test":
 #  var p = newParser("Example number one")
@@ -83,7 +77,6 @@ import nclap/[
 #  if args["--output"].registered:
 #      echo "Redirecting content to " & args["--output"].getContent(default="")
 
-
 #test "example1":
 #  var p = newParser("example number 1, flags only")
 #
@@ -102,7 +95,6 @@ import nclap/[
 #    echo "Showing additional information"
 #
 #  echo "Output goes to: " & args["--output"].getContent(error=true)
-
 
 #test "example2":
 #  var p = newParser("example number 2, commands only")
@@ -126,7 +118,6 @@ import nclap/[
 #      echo "Removing project", args["remove"]["project"].getContent()
 #  else:
 #    echo "Listing everything"
-
 
 #test "example3":
 #  proc outputTo(output: string, content: string) =
@@ -159,8 +150,6 @@ import nclap/[
 #  else:
 #    outputTo(output, "Listing everything")
 
-
-
 #test "new parser version":
 #  var p = newParser("new parser test")
 #
@@ -179,7 +168,6 @@ import nclap/[
 #
 #  echo p.parse(@["add", "-n", "task", "--all"])
 
-
 #test "last arg content":
 #  var p = newParser("simple todo app")
 #
@@ -192,7 +180,6 @@ import nclap/[
 #
 #  echo args
 
-
 #test "generated help message":
 #  var p = newParser("simple todo app")
 #
@@ -204,7 +191,6 @@ import nclap/[
 #  let args = p.parse()
 #
 #  echo args
-
 
 #test "another":
 #  var p = newParser("simple todo app")
@@ -224,7 +210,6 @@ import nclap/[
 #  let args = p.parse(@["add", "-n", "task", "-t", "kaboom ?", "-t"])
 #
 #  echo args
-
 
 #test "last":
 #  var p = newParser("simple todo app")
@@ -264,7 +249,6 @@ import nclap/[
 #  if args["remove"].registered:
 #    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
 
-
 #test "compact shortflags":
 #  var p = newParser("compact shortflags test", enforce_short=true)
 #
@@ -277,9 +261,8 @@ import nclap/[
 #
 #  echo args
 
-
 test "customizing help message":
-  let settings: HelpSettings = (
+  let settings = HelpSettings(
     tabstring: "│   ",
     prefix_pretab: "-> ",
     prefix_posttab: "├─ ",
@@ -290,10 +273,32 @@ test "customizing help message":
   )
   var p = newParser("customizing help message", settings)
 
-  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
-    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
-    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
-    .addFlag("-o", "--output", "outputs the content to a file", true)
+  p
+  .addCommand(
+    "add",
+    @[
+      newCommand("task", @[], "adds a task"),
+      newCommand("project", @[], "adds a project"),
+    ],
+    "",
+  )
+  .addCommand(
+    "remove",
+    @[
+      newCommand(
+        "task",
+        @[newFlag("-n", "--no-log", "does not log the deletion")],
+        "removes a task",
+      ),
+      newCommand("project", @[], "removes a project"),
+    ],
+    "",
+  )
+  .addCommand(
+    "list",
+    @[newFlag("-a", "--all", "show even hidden tasks/projects")],
+    "listing tasks and projects",
+  )
+  .addFlag("-o", "--output", "outputs the content to a file", true)
 
   let args = p.parse()
-

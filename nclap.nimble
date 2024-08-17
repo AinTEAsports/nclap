@@ -10,3 +10,9 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 2.0.4"
+
+taskRequires "fmt", "nph >= 0.6.0"
+
+task fmt, "Run a formatter on the code":
+  exec "nph src/"
+  exec "nph tests/"
