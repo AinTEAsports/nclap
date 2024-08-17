@@ -1,16 +1,16 @@
-import std/[
-  strformat,
-  strutils,
-  sugar,
-]
+import std/[strformat, strutils, sugar]
 
 # NOTE: it should not contain =
 func expandCompactArgv(compact_argv: string): seq[string] =
   assert not compact_argv.contains('=')
 
-  let compact = (if compact_argv.startsWith('-'): compact_argv[1..^1] else: compact_argv)
-  collect(for c in compact: &"-{c}")
-
+  let compact =
+    (if compact_argv.startsWith('-'): compact_argv[1 ..^ 1]
+    else: compact_argv)
+  collect(
+    for c in compact:
+      &"-{c}"
+  )
 
 func expandArgvShortFlags*(argv: seq[string]): seq[string] =
   ##[ This function expands all compact short flags into multiple short flags
@@ -34,18 +34,19 @@ func expandArgvShortFlags*(argv: seq[string]): seq[string] =
     if arg.startsWith('-') and not arg.startsWith("--"):
       if arg.contains('='):
         let
-          splt = arg.split('=', maxsplit=1)
+          splt = arg.split('=', maxsplit = 1)
           compactflag = splt[0]
           content = (if len(splt) == 2: splt[1] else: "")
 
-        for expanded in expandCompactArgv(compactflag): 
+        for expanded in expandCompactArgv(compactflag):
           res.add(expanded)
 
         # NOTE: add what was after the "=" to the last argument
-        res[len(res)-1] &= &"={content}"
+        res[len(res) - 1] &= &"={content}"
       else:
         for expanded in expandCompactArgv(arg):
           res.add(expanded)
-    else: res.add(arg)
+    else:
+      res.add(arg)
 
   res
