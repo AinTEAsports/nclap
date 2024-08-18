@@ -146,8 +146,10 @@ let settings: HelpSettings = (
     prefix_pretab: "-> ",
     prefix_posttab: "├─ ",
     prefix_posttab_last: "└─ ",
-    surround_left: "{",
-    surround_right: "}",
+    surround_left_required: "{",
+    surround_right_required: "}",
+    surround_left_optional: "}",
+    surround_right_optional: "}",
     separator: ", ",
 )
 var p = newParser("customizing help message", settings)

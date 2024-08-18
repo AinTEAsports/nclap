@@ -16,8 +16,10 @@ const
     prefix_pretab: "",
     prefix_posttab: "",
     prefix_posttab_last: "",
-    surround_left: "[",
-    surround_right: "]",
+    surround_left_required: ")",
+    surround_right_required: "(",
+    surround_left_optional: "[",
+    surround_right_optional: "]",
     separator: "|"
   )
 
@@ -27,8 +29,10 @@ type
     prefix_pretab: string,
     prefix_posttab: string,
     prefix_posttab_last: string,
-    surround_left: string,
-    surround_right: string,
+    surround_left_required: string,
+    surround_right_required: string,
+    surround_left_optional: string,
+    surround_right_optional: string,
     separator: string
   ]
 
@@ -98,6 +102,12 @@ func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
 
 
+func is_required(argument: Argument): bool =
+  case argument.kind
+    of Flag: argument.flag_required
+    of Command: argument.command_required
+
+
 func helpToStringAux(
   argument: Argument,
   settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
@@ -111,8 +121,10 @@ func helpToStringAux(
       prefix_pretab,
       prefix_posttab,
       prefix_posttab_last,
-      surround_left,
-      surround_right,
+      surround_left_required,
+      surround_right_required,
+      surround_left_optional,
+      surround_right_optional,
       separator
     ) = settings
     tabrepeat = tabstring.repeat(depth)
@@ -120,6 +132,10 @@ func helpToStringAux(
       if is_last or argument.kind == Flag: prefix_posttab_last
       else: prefix_posttab
     )
+
+  let
+    surround_left = (if argument.is_required: surround_left_required else: surround_left_optional)
+    surround_right = (if argument.is_required: surround_right_required else: surround_right_optional)
 
   case argument.kind:
     of Flag:
