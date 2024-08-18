@@ -16,8 +16,8 @@ const
     prefix_pretab: "",
     prefix_posttab: "",
     prefix_posttab_last: "",
-    surround_left_required: ")",
-    surround_right_required: "(",
+    surround_left_required: "(",
+    surround_right_required: ")",
     surround_left_optional: "[",
     surround_right_optional: "]",
     separator: "|"
