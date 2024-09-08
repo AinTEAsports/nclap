@@ -2,6 +2,8 @@
 # exports the main API in this file. Note that you cannot rename this file
 # but you can remove it if you wish.
 
-include nclap/parser
-include nclap/cliargs
-include nclap/arguments
+include nclap/[
+  parser,
+  cliargs,
+  arguments,
+]
