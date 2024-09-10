@@ -75,7 +75,7 @@ func addCommand*(
   required: bool = COMMAND_REQUIRED_DEFAULT
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
-    raise newException(FieldDefect, &"[ERROR.invalid-argument] A command cannot start with a '-': {name}")
+    raise newException(FieldDefect, &"A command cannot start with a '-': {name}")
 
   parser.addArgument(newCommand(name, subcommands, description, required))
 
@@ -91,7 +91,7 @@ func addFlag*(
   # NOTE: this is a design choice, long flags can start with only a dash,
   # since if no long flag is given, the long flag will just be the short flag
   if not (short.startsWith('-') and long.startsWith('-')):
-    raise newException(FieldDefect, &"[ERROR.invalid-argument] A flag must start with a '-': {short}|{long}")
+    raise newException(FieldDefect, &"A flag must start with a '-': {short}|{long}")
 
   parser.addArgument(newFlag(short, long, description, holds_value, required))
 
@@ -141,7 +141,7 @@ func getCommand(arguments: seq[Argument], argument_name: string): Argument =
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(FieldDefect, &"Invalid command: {argument_name}")
+  raise newException(FieldDefect, &"Invalid command: '{argument_name}'")
 
 
 func getFlag(arguments: seq[Argument], argument_name: string): Argument =
@@ -152,7 +152,7 @@ func getFlag(arguments: seq[Argument], argument_name: string): Argument =
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(FieldDefect, &"Invalid flag: {argument_name}")
+  raise newException(FieldDefect, &"Invalid flag: '{argument_name}'")
 
 
 
@@ -200,7 +200,7 @@ proc parseFlags(
               no_colors=parser.no_colors
             )
             quit INVALID_ARGUMENT_EXIT_CODE
-          else: raise newException(ValueError, &"Expected a value after the flag: {current_argv}")
+          else: raise newException(ValueError, &"Expected a value after the flag: '{current_argv}'")
 
         content = argv[depth]
 
@@ -279,7 +279,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         no_colors=parser.no_colors
       )
       quit INVALID_ARGUMENT_EXIT_CODE
-    else: raise newException(ValueError, &"Invalid argument: '{current_argv}")
+    else: raise newException(ValueError, &"Invalid argument: '{current_argv}'")
 
   # NOTE: from this point we assert the current argument is valid, it exists
   if current_argv.startsWith('-'):
