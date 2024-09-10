@@ -140,7 +140,10 @@ func helpToStringAux(
   case argument.kind:
     of Flag:
       let
-        usage = &"{surround_left}{argument.short}{separator}{argument.long}{surround_right}"
+        usage = (
+          if argument.short == argument.long: &"{surround_left}{argument.short}{surround_right}"
+          else: &"{surround_left}{argument.short}{separator}{argument.long}{surround_right}"
+        )
         desc = &"{argument.flag_description}"
 
       # NOTE: no subcommands to a flag, it is the first but more importantly the last

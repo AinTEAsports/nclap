@@ -296,6 +296,7 @@ test "customizing help message":
     .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
     .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
     .addFlag("-o", "--output", "outputs the content to a file", true)
+    .addFlag("-d", "-d", "directory in which to do stuff")
 
   let args = p.parse()
   echo args
