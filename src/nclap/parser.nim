@@ -104,12 +104,16 @@ proc showHelp*(
   parser: Parser,
   exit_code: int = 0,
 ) =
+  ##[ Shows an auto-generated help message and exits the program with code `exit_code` if `parser.exit_on_error` is set
+  ]##
+
   echo parser.helpmsg
 
   for arg in parser.arguments:
     echo helpToString(arg, parser.help_settings)
 
-  quit(exit_code)
+  if parser.exit_on_error:
+    quit(exit_code)
 
 
 func getCommands(parser: Parser): seq[Argument] =
