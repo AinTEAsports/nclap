@@ -286,7 +286,7 @@ test "customizing help message":
     prefix_posttab_last: "└─ ",
     surround_left_required: "{",
     surround_right_required: "}",
-    surround_left_optional: "}",
+    surround_left_optional: "{",
     surround_right_optional: "}",
     separator: ", ",
   )
