@@ -278,25 +278,37 @@ import nclap/[
 #  echo args
 
 
-test "customizing help message":
-  let settings: HelpSettings = (
-    tabstring: "│   ",
-    prefix_pretab: "-> ",
-    prefix_posttab: "├─ ",
-    prefix_posttab_last: "└─ ",
-    surround_left_required: "{",
-    surround_right_required: "}",
-    surround_left_optional: "{",
-    surround_right_optional: "}",
-    separator: ", ",
-  )
-  var p = newParser("customizing help message", settings)
+#test "customizing help message":
+#  let settings: HelpSettings = (
+#    tabstring: "│   ",
+#    prefix_pretab: "-> ",
+#    prefix_posttab: "├─ ",
+#    prefix_posttab_last: "└─ ",
+#    surround_left_required: "{",
+#    surround_right_required: "}",
+#    surround_left_optional: "{",
+#    surround_right_optional: "}",
+#    separator: ", ",
+#  )
+#  var p = newParser("customizing help message", settings)
+#
+#  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+#    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
+#    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
+#    .addFlag("-o", "--output", "outputs the content to a file", true)
+#    .addFlag("-d", "-d", "directory in which to do stuff")
+#
+#  let args = p.parse()
+#  echo args
 
-  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
-    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task"), newCommand("project", @[], "removes a project")], "")
-    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
+test "subcommands content":
+  var p = newParser("customizing help message", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p.addCommand("add", @[newCommand("task", @[], "adds a task", true, true), newCommand("project", @[], "adds a project", true, true)], "")
+    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task", true, true), newCommand("project", @[], "removes a project", true, true)], "")
+    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects", true, false)
     .addFlag("-o", "--output", "outputs the content to a file", true)
     .addFlag("-d", "-d", "directory in which to do stuff")
 
-  let args = p.parse()
+  let args = p.parse(@["add", "task", "yes"])
   echo args

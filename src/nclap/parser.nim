@@ -30,6 +30,14 @@ type
     exit_on_error: bool
 
 
+template error_exit(does_exit, error_type, error_message, exit_code, no_colors: typed): untyped =
+  if does_exit:
+    echo error("ERROR." & $error_type, error_message, no_colors)
+    quit exit_code
+  else:
+    raise newException(error_type, error_message)
+
+
 func newParser*(
   help_message: string = "",
   settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
@@ -47,15 +55,18 @@ func newParser*(
   )
 
 
-func addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
+proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
   if parser.enforce_short:
     case argument.kind:
       of Flag:
         # NOTE: 1 for the "-" and 1 for the character, 1+1=2 (I'm a genius I know)
         if len(argument.short) != 2:
-          raise newException(
+          error_exit(
+            parser.exit_on_error,
             FieldDefect,
-            &"[ERROR.invalid-argument] `parser.enforce_short` is true, but the short flag is more than 1 character: {argument.short}"
+            &"[ERROR.invalid-argument] `parser.enforce_short` is true, but the short flag is more than 1 character: {argument.short}",
+            INVALID_ARGUMENT_EXIT_CODE,
+            parser.no_colors
           )
         else: parser.arguments.add(argument)
       of Command:
@@ -67,20 +78,38 @@ func addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
 
 
 
-func addCommand*(
+proc addCommand*(
   parser: var Parser,
   name: string,
   subcommands: seq[Argument] = @[],
   description: string = name,
-  required: bool = COMMAND_REQUIRED_DEFAULT
+  required: bool = COMMAND_REQUIRED_DEFAULT,
+  has_content: bool = HAS_CONTENT_DEFAULT
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
-    raise newException(FieldDefect, &"A command cannot start with a '-': {name}")
+    error_exit(
+      parser.exit_on_error,
+      FieldDefect,
+      &"A command cannot start with a '-': {name}",
+      INVALID_ARGUMENT_EXIT_CODE,
+      parser.no_colors
+    )
 
-  parser.addArgument(newCommand(name, subcommands, description, required))
+  let required_subcommands = subcommands.getCommands().filter(cmd => cmd.command_required)
+
+  if len(required_subcommands) != 0 and has_content:
+    error_exit(
+      parser.exit_on_error,
+      FieldDefect,
+      &"A command cannot expect a content and have required subcommands (command: '{name}')",
+      INVALID_ARGUMENT_EXIT_CODE,
+      parser.no_colors
+    )
+
+  parser.addArgument(newCommand(name, subcommands, description, required, has_content))
 
 
-func addFlag*(
+proc addFlag*(
   parser: var Parser,
   short: string,
   long: string = short,
@@ -91,7 +120,13 @@ func addFlag*(
   # NOTE: this is a design choice, long flags can start with only a dash,
   # since if no long flag is given, the long flag will just be the short flag
   if not (short.startsWith('-') and long.startsWith('-')):
-    raise newException(FieldDefect, &"A flag must start with a '-': {short}|{long}")
+    error_exit(
+      parser.exit_on_error,
+      FieldDefect,
+      &"A flag must start with a '-': {short}|{long}",
+      INVALID_ARGUMENT_EXIT_CODE,
+      parser.no_colors
+    )
 
   parser.addArgument(newFlag(short, long, description, holds_value, required))
 
@@ -139,16 +174,22 @@ func isValidArgument(arguments: seq[Argument], argument_name: string): bool =
   false
 
 
-func getCommand(arguments: seq[Argument], argument_name: string): Argument =
+proc getCommand(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
   for argument in arguments.getCommands():
     if argument.name == argument_name:
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(FieldDefect, &"Invalid command: '{argument_name}'")
+  error_exit(
+    parser.exit_on_error,
+    FieldDefect,
+    &"Invalid command: '{argument_name}'",
+    INVALID_ARGUMENT_EXIT_CODE,
+    parser.no_colors
+  )
 
 
-func getFlag(arguments: seq[Argument], argument_name: string): Argument =
+proc getFlag(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
   let argname = (if argument_name.contains('='): argument_name.split('=')[0] else: argument_name)
 
   for argument in arguments.getFlags():
@@ -156,7 +197,13 @@ func getFlag(arguments: seq[Argument], argument_name: string): Argument =
       return argument
 
   # NOTE: should be impossible since we check before calling this function
-  raise newException(FieldDefect, &"Invalid flag: '{argument_name}'")
+  error_exit(
+    parser.exit_on_error,
+    FieldDefect,
+    &"Invalid flag: '{argument_name}'",
+    INVALID_ARGUMENT_EXIT_CODE,
+    parser.no_colors
+  )
 
 
 
@@ -177,7 +224,7 @@ proc parseFlags(
   while depth < len(argv) and argv[depth].startsWith('-'):
     let
       current_argv = argv[depth]
-      current_flag = valid_arguments.getFlag(current_argv)
+      current_flag = valid_arguments.getFlag(current_argv, parser)
 
     var
       name = current_argv
@@ -195,16 +242,14 @@ proc parseFlags(
         if depth >= len(argv):
           # NOTE: I had a choice: either throw error or quit, I was too lazy to handle the error in `parseArgs` where `parseFlags` is called (but both are equivalent
           # even though handling the error in `parseArgs` is way better since this function should not quit unexpectedly)
-          #echo &"[ERROR.parse] Expected a value after the flag: {current_argv}"
 
-          if parser.exit_on_error:
-            echo error(
-              "ERROR.parse",
-              &"Expected a value after the flag: {current_argv}",
-              no_colors=parser.no_colors
-            )
-            quit INVALID_ARGUMENT_EXIT_CODE
-          else: raise newException(ValueError, &"Expected a value after the flag: '{current_argv}'")
+          error_exit(
+            parser.exit_on_error,
+            ValueError,
+            &"Expected a value after the flag '{current_argv}'",
+            INVALID_ARGUMENT_EXIT_CODE,
+            parser.no_colors
+          )
 
         content = argv[depth]
 
@@ -230,8 +275,13 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
     case argument.kind:
       of Command:
         if not res.hasKey(argument.name):
+          let content = (
+            if argument.has_content: some[string]("")
+            else: none[string]()
+          )
+
           res[argument.name] = CLIArg(
-            content: none[string](),
+            content: content,
             registered: false,
             subarguments: fillCLIArgs(argument.subcommands, depth+1)
           )
@@ -276,14 +326,13 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
 
   if not valid_arguments.isValidArgument(current_argv):
-    if parser.exit_on_error:
-      echo error(
-        "ERROR.parse",
-        &"Invalid argument: '{current_argv}'",
-        no_colors=parser.no_colors
-      )
-      quit INVALID_ARGUMENT_EXIT_CODE
-    else: raise newException(ValueError, &"Invalid argument: '{current_argv}'")
+    error_exit(
+      parser.exit_on_error,
+      ValueError,
+      &"Invalid argument: '{current_argv}'",
+      INVALID_ARGUMENT_EXIT_CODE,
+      parser.no_colors
+    )
 
   # NOTE: from this point we assert the current argument is valid, it exists
   if current_argv.startsWith('-'):
@@ -297,7 +346,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     return (concatCLIArgs(res, next), argv_rest)
   else:
     let
-      current_command = valid_arguments.getCommand(current_argv)
+      current_command = valid_arguments.getCommand(current_argv, parser)
       (rest, argv_rest) = (
         if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), argv[depth+1..^1])
         elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
@@ -314,12 +363,31 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         else:
           parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
       )
-
-    res[current_command.name] = CLIArg(
-      content: (
+      content = (
         if len(argv_rest) == 0: none[string]()
         else: some[string](argv_rest.join(" "))
-      ),
+      )
+
+    if not current_command.has_content and content.isSome:
+      error_exit(
+        parser.exit_on_error,
+        ValueError,
+        &"command '{current_command.name}' should not have any content, yet it got '{content.get()}'",
+        INVALID_ARGUMENT_EXIT_CODE,
+        parser.no_colors
+      )
+
+    if current_command.has_content and (content.isNone or (content.isSome and content.get() == "")):
+      error_exit(
+        parser.exit_on_error,
+        ValueError,
+        &"command '{current_command.name}' should have some content, yet it didn't",
+        INVALID_ARGUMENT_EXIT_CODE,
+        parser.no_colors
+      )
+
+    res[current_command.name] = CLIArg(
+      content: content,
       registered: true,
       subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
     )

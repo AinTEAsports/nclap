@@ -11,6 +11,7 @@ const
   FLAG_HOLDS_VALUE_DEFAULT* = false
   FLAG_REQUIRED_DEFAULT* = false
   COMMAND_REQUIRED_DEFAULT* = true
+  HAS_CONTENT_DEFAULT* = false
   DEFAULT_SHOWHELP_SETTINGS* = (
     tabstring: "  ",
     prefix_pretab: "",
@@ -54,6 +55,7 @@ type
         subcommands*: seq[Argument]
         command_description*: string
         command_required*: bool
+        has_content*: bool
 
 
 func newFlag*(
@@ -69,9 +71,17 @@ func newCommand*(
   name: string,
   subcommands: seq[Argument] = @[],
   description: string = name,
-  required: bool = COMMAND_REQUIRED_DEFAULT
+  required: bool = COMMAND_REQUIRED_DEFAULT,
+  has_content: bool = HAS_CONTENT_DEFAULT
 ): Argument =
-  Argument(kind: Command, name: name, subcommands: subcommands, command_description: description, command_required: required)
+  Argument(
+    kind: Command,
+    name: name,
+    subcommands: subcommands,
+    command_description: description,
+    command_required: required,
+    has_content: has_content
+  )
 
 func `$`*(argument: Argument): string =
   case argument.kind
@@ -91,8 +101,9 @@ func `$`*(argument: Argument): string =
         s = argument.subcommands
         desc = argument.command_description
         r = argument.command_required
+        h = argument.has_content
 
-      &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r})"
+      &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r}, has_content: {h})"
 
 
 func getFlags*(arguments: seq[Argument]): seq[Argument] =
