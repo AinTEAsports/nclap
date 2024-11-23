@@ -312,3 +312,4 @@ test "subcommands content":
 
   let args = p.parse(@["add", "task", "yes"])
   echo args
+  echo args.add

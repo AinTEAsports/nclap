@@ -75,3 +75,10 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
   else:
     if error: raise newException(ValueError, "No content in CLIArg")
     else: default
+
+
+template `.`*(cliarg: CLIArg, name: untyped): CLIArg =
+  cliarg.subarguments[astToStr(name)]
+
+template `.`*(cliargs: CLIArgs, name: untyped): CLIArg =
+  cliargs[astToStr(name)]
