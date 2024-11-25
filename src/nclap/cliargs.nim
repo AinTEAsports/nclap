@@ -92,7 +92,7 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
 
 
 template `??`*(cliarg: CLIArg, default: string = DEFAULT_CONTENT): string =
-  cliarg.getContent(default)
+  cliarg.getContent(default, false)
 
 
 template `.`*(cliarg: CLIArg, name: untyped): CLIArg =

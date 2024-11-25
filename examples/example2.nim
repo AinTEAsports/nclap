@@ -13,15 +13,15 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-if args["add"].registered:
-  if args["task"].registered:
-    echo "Adding task", args["add"]["task"].getContent()
+if args.add.registered:
+  if args.task.registered:
+    echo "Adding task", args.add.task.getContent()
   else:
-    echo "Adding project", args["add"]["project"].getContent()
-elif args["remove"].registered:
-  if args["task"].registered:
-    echo "Removing task", args["remove"]["task"].getContent()
+    echo "Adding project", args.add.project.getContent()
+elif args.remove.registered:
+  if args.task.registered:
+    echo "Removing task", args.remove.task.getContent()
   else:
-    echo "Removing project", args["remove"]["project"].getContent()
+    echo "Removing project", args.remove.project.getContent()
 else:
-  echo "Listing " & (if args["list"]["all"].registered: "" else: "almost ") & "everything"
+  echo "Listing " & (if args.list.all.registered: "" else: "almost ") & "everything"

@@ -14,10 +14,10 @@ p.addFlag("-h", "--help", "shows this help message", false)
 let args = p.parse()
 
 # you can access the flag value with the short or the long version
-if args["--help"].registered:
+if args?help.registered:
   p.showHelp(exit_code=1)
 
-if args["-vv"].registered:
+if args?vv.registered:
   echo "Showing additional information"
 
-echo "Output goes to: " & args["--output"].getContent(error=true)
+echo "Output goes to: " & args?output.getContent(error=true)
