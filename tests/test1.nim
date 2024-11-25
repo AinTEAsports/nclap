@@ -317,3 +317,5 @@ test "subcommands content":
   #echo args?output
   echo "\n\n\n---\n\n\n"
   echo args.remove.task?n
+
+  echo "output=" & (args?output ?? "DEFAULT OUTPUT")

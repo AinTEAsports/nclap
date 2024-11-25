@@ -91,6 +91,10 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
     else: default
 
 
+template `??`*(cliarg: CLIArg, default: string = DEFAULT_CONTENT): string =
+  cliarg.getContent(default)
+
+
 template `.`*(cliarg: CLIArg, name: untyped): CLIArg =
   cliarg.subarguments[astToStr(name)]
 
