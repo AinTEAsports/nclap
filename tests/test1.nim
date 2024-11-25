@@ -310,6 +310,10 @@ test "subcommands content":
     .addFlag("-o", "--output", "outputs the content to a file", true)
     .addFlag("-d", "-d", "directory in which to do stuff")
 
-  let args = p.parse(@["add", "task", "yes"])
+  let args = p.parse(@["remove", "task", "--no-log", "yes"])
   echo args
-  echo args.add
+  #echo args.add
+  #echo args.remove
+  #echo args?output
+  echo "\n\n\n---\n\n\n"
+  echo args.remove.task?n
