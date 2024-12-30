@@ -319,5 +319,5 @@ test "subcommands content":
   #echo "\n\n\n---\n\n\n"
   #echo args.remove.task->n
 
-  let output: string = (args--output ?? "default output btw")
+  let output: string = (args--output !! "default output btw")
   echo "output=" & output

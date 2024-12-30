@@ -91,11 +91,19 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
     else: default
 
 
-template `??`*(cliarg: CLIArg, default: string): string =
+template `!!`*(cliarg: CLIArg, default: string): string =
   cliarg.getContent(default, false)
 
-template `?`*(cliarg: CLIArg): string =
+template `!`*(cliarg: CLIArg): string =
   cliarg.getContent(error=true)
+
+
+template `?`*(cliarg: CLIArg): bool =
+  cliarg.registered
+
+template `??`*(cliarg: CLIArg, s: string): string =
+  (if cliarg.registered: s else: "")
+
 
 
 template `++`*(cliarg: CLIArg, name: untyped): CLIArg =

@@ -42,7 +42,7 @@ if args--help.registered:
 if args["-vv"].registered:
   echo "Showing additional information"
 
-echo "Output goes to: " & (args--output ?? "/path/to/default_file")
+echo "Output goes to: " & (args--output !! "/path/to/default_file")
 # <=> echo "Output goes to: " & args["--output"].getContent(default="/path/to/default_file")
 ```
 ```sh
@@ -126,7 +126,7 @@ elif args..remove.registered:
     else:
       outputTo(out, "Removing project" & args..remove..project.getContent())
 else:
-  outputTo(out, "Listing " & (if args..list["-a"].registered: "" else: "almost") & " everything")
+  outputTo(out, "Listing " & (args..list["-a"] ?? "almost") & " everything")
 ```
 ```sh
 $ nim c examples/example3.nim
