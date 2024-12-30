@@ -34,7 +34,7 @@ p.addFlag("-h", "--help", "shows this help message")
 let args = p.parse()
 
 # you can access the flag value with the short or the long version
-if args["--help"].registered:
+if args--help.registered:
   # NOTE: the `showHelp` message can be tuned,
   # try to tinker with the parameters and see what happens
   p.showHelp(exit_code=1)
@@ -42,7 +42,8 @@ if args["--help"].registered:
 if args["-vv"].registered:
   echo "Showing additional information"
 
-echo "Output goes to: " & args["--output"].getContent(default="/path/to/default_file")
+echo "Output goes to: " & (args--output ?? "/path/to/default_file")
+# <=> echo "Output goes to: " & args["--output"].getContent(default="/path/to/default_file")
 ```
 ```sh
 $ nim c examples/example1.nim
@@ -69,18 +70,18 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-if args["add"].registered:
-  if args["task"].registered:
-    echo "Adding task", args["add"]["task"].getContent()
+if args..add.registered:
+  if args..task.registered:
+    echo "Adding task", args..add..task.getContent()
   else:
-    echo "Adding project", args["add"]["project"].getContent()
-elif args["remove"].registered:
-  if args["task"].registered:
-    echo "Removing task", args["remove"]["task"].getContent()
+    echo "Adding project", args..add..project.getContent()
+elif args..remove.registered:
+  if args..task.registered:
+    echo "Removing task", args..remove..task.getContent()
   else:
-    echo "Removing project", args["remove"]["project"].getContent()
+    echo "Removing project", args..remove..project.getContent()
 else:
-  echo "Listing " & (if args["list"]["all"].registered: "" else: "almost ") & "everything"
+  echo "Listing " & (if args..list..all.registered: "" else: "almost ") & "everything"
 
 ```
 ```sh
@@ -113,19 +114,19 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 let args = p.parse()
 let out = (if args["-o"].registered: args["-o"].getContent(error=true) else: "")  # NOTE: we error if no value was found because the flag is supposed to be required
 
-if args["add"].registered:
-  if args["task"].registered:
-    outputTo(out, "Adding task" & args["add"]["task"].getContent())
+if args..add.registered:
+  if args..task.registered:
+    outputTo(out, "Adding task" & args..add..task.getContent())
   else:
-    outputTo(out, "Adding project" & args["add"]["project"].getContent())
-elif args["remove"].registered:
-  if not args["task"]["-n"]:
+    outputTo(out, "Adding project" & args..add..project.getContent())
+elif args..remove.registered:
+  if not args..task["-n"]:
     if args["task"].registered:
-      outputTo(out, "Removing task" & args["remove"]["task"].getContent())
+      outputTo(out, "Removing task" & args..remove..task.getContent())
     else:
-      outputTo(out, "Removing project" & args["remove"]["project"].getContent())
+      outputTo(out, "Removing project" & args..remove..project.getContent())
 else:
-  outputTo(out, "Listing " & (if args["list"]["-a"].registered: "" else: "almost") & " everything")
+  outputTo(out, "Listing " & (if args..list["-a"].registered: "" else: "almost") & " everything")
 ```
 ```sh
 $ nim c examples/example3.nim

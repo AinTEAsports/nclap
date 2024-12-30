@@ -91,18 +91,21 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
     else: default
 
 
-template `??`*(cliarg: CLIArg, default: string = DEFAULT_CONTENT): string =
+template `??`*(cliarg: CLIArg, default: string): string =
   cliarg.getContent(default, false)
 
+template `?`*(cliarg: CLIArg): string =
+  cliarg.getContent(error=true)
 
-template `.`*(cliarg: CLIArg, name: untyped): CLIArg =
+
+template `++`*(cliarg: CLIArg, name: untyped): CLIArg =
   cliarg.subarguments[astToStr(name)]
 
-template `.`*(cliargs: CLIArgs, name: untyped): CLIArg =
+template `++`*(cliargs: CLIArgs, name: untyped): CLIArg =
   cliargs[astToStr(name)]
 
 
-template `?`*(cliarg: CLIArg, name: untyped): untyped =
+template `--`*(cliarg: CLIArg, name: untyped): untyped =
   (
     let name_str = astToStr(name)
 
@@ -111,7 +114,7 @@ template `?`*(cliarg: CLIArg, name: untyped): untyped =
     else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
   )
 
-template `?`*(cliargs: CLIArgs, name: untyped): untyped =
+template `--`*(cliargs: CLIArgs, name: untyped): untyped =
   (
     let name_str = astToStr(name)
 

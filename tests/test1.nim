@@ -311,11 +311,13 @@ test "subcommands content":
     .addFlag("-d", "-d", "directory in which to do stuff")
 
   let args = p.parse(@["remove", "task", "--no-log", "yes"])
+
   echo args
   #echo args.add
   #echo args.remove
   #echo args?output
-  echo "\n\n\n---\n\n\n"
-  echo args.remove.task?n
+  #echo "\n\n\n---\n\n\n"
+  #echo args.remove.task->n
 
-  echo "output=" & (args?output ?? "DEFAULT OUTPUT")
+  let output: string = (args--output ?? "default output btw")
+  echo "output=" & output
