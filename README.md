@@ -28,7 +28,7 @@ var p = newParser("example number 1, flags only")
 
 # NOTE: p.addFlag(short, long, description=long, holds_value=false, required=false)
 p.addFlag("-h", "--help", "shows this help message")
-  .addFlag("-vv", "--verbose", "shows additional informations")
+  .addFlag("-vv", "--verbose", "shows additional information")
   .addFlag("-o", "--output", , "outputs to a file", true)
 
 let args = p.parse()
@@ -192,6 +192,30 @@ For example, `./program -abc` will be expanded as `./program -a -b -c`
 By default this option is off, letting you have short flags as long as you want
 (not too long though, for example `-outputtoacertainfileaftercallingandthisflagisbecomingabittoolong` is a tiny bit too long)
 but will not enable compacting short flags (for example `./program -abc` will stay `./program -abc`)
+
+
+---
+## TODO:
+Functionalities to be implemented in the future:
+    - [ ] Macro to set subcommands and params such as:
+```nim
+var p = createParser("small todo app"):
+  flag("-v", "--verbose", desc="shows debug information")
+  flag("-n", "--no-log", desc="does not show log")
+
+  command("add"):
+    command("project", desc="adds project")
+    command("task", desc="adds task")
+    flag("-u", "--update", desc="update the content/name if the task/project already existed")
+
+  command("remove"):
+    command("project", desc="removes project")
+    command("task", desc="removes task")
+    flag("-f", "--force", desc="does not show error if task/project did not existed")
+
+  command("list"):
+    command("all")
+```
 
 ---
 
