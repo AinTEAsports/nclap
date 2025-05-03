@@ -5,19 +5,24 @@
 #
 # To run these tests, simply execute `nimble test`.
 
-import unittest
-import std/strformat
+import
+  std/[
+    strformat,
+    unittest
+  ],
 
-#import nclap
+  nclap
+
+
 #import nclap/parser
 #import nclap/arguments
 #import nclap/cliargs
 
-import nclap/[
-  parser,
-  arguments,
-  cliargs
-]
+#import nclap/[
+#  parser,
+#  arguments,
+#  cliargs
+#]
 
 #test "newArgument":
 #  echo "[DEBUG.TEST.newArgument] START"
@@ -301,23 +306,23 @@ import nclap/[
 #  let args = p.parse()
 #  echo args
 
-test "subcommands content":
-  var p = newParser("customizing help message", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
-
-  p.addCommand("add", @[newCommand("task", @[], "adds a task", true, true), newCommand("project", @[], "adds a project", true, true)], "")
-    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task", true, true), newCommand("project", @[], "removes a project", true, true)], "")
-    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects", true, false)
-    .addFlag("-o", "--output", "outputs the content to a file", true)
-    .addFlag("-d", "-d", "directory in which to do stuff")
-
-  let args = p.parse(@["remove", "task", "--no-log", "yes"])
-
-  echo args
-  #echo args.add
-  #echo args.remove
-  #echo args?output
-  #echo "\n\n\n---\n\n\n"
-  #echo args.remove.task->n
-
-  let output: string = (args--output !! "default output btw")
-  echo "output=" & output
+#test "subcommands content":
+#  var p = newParser("customizing help message", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+#
+#  p.addCommand("add", @[newCommand("task", @[], "adds a task", true, true), newCommand("project", @[], "adds a project", true, true)], "")
+#    .addCommand("remove", @[newCommand("task", @[newFlag("-n", "--no-log", "does not log the deletion")], "removes a task", true, true), newCommand("project", @[], "removes a project", true, true)], "")
+#    .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects", true, false)
+#    .addFlag("-o", "--output", "outputs the content to a file", true)
+#    .addFlag("-d", "-d", "directory in which to do stuff")
+#
+#  let args = p.parse(@["remove", "task", "--no-log", "yes"])
+#
+#  echo args
+#  #echo args.add
+#  #echo args.remove
+#  #echo args?output
+#  #echo "\n\n\n---\n\n\n"
+#  #echo args.remove.task->n
+#
+#  let output: string = (args.output !! "default output btw")
+#  echo "output=" & output

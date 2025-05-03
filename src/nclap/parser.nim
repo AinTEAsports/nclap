@@ -5,6 +5,7 @@ import std/[
   strutils,
   sequtils,
   tables,
+  macros,
   options
 ]
 
@@ -19,6 +20,7 @@ const
   DEFAULT_ENFORCE_SHORT* = false
   NO_COLORS* = false
   EXIT_ON_ERROR* = true
+
 
 type
   Parser* = object
@@ -505,3 +507,99 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
 
 proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
+
+
+
+
+
+
+
+
+
+
+
+
+
+#func getOr[T](a: openArray[T], i: Natural, x: T): T {.inline.} =
+#  (if i < a.len: a[i] else: x)
+
+
+# NOTE:
+  # take in a call statement and return a Argument
+  # or take in a list of call statements and return a seq[Argument]
+  # then specify which is the current arg if needed, otherwise create a new one
+macro newParserMacro(parser: var Parser, body: untyped): seq[Argument] =
+  body.expectKind nnkStmtList
+
+  # NOTE: only use this if weird problems
+  #body.expectMinLen 1
+  #body[0].expectKind nnkCall
+
+  for ind in body:
+    ind.expectKind nnkCall
+
+    let indent_name = ind[0].strVal
+
+    case indent_name:
+      of "command":
+        discard
+
+        #let
+        #  name = ind[1].strVal
+        #  description = (if ind.len >= 2: ind[1].strVal else: name)
+        #  required = (if ind.len >= 3: ind[2].boolVal else: COMMAND_REQUIRED_DEFAULT)
+        #  has_content = (if ind.len >= 4: ind[3].boolVal else: HAS_CONTENT_DEFAULT)
+        #
+        #
+        #echo &"{name}, {description}, {required}, {has_content}"
+
+        # NOTE: get the recursive case
+        #if ind[^1].kind == nnkStmtList:
+
+
+      of "flag":
+        discard
+
+        #let
+        #  short = ind[1].strVal
+        #  long = (if ind.len >= 2: ind[1].strVal else: short)
+        #  description = (if ind.len >= 3: ind[2].strVal else: long)
+        #  holds_value = (if ind.len >= 4: ind[3].boolVal else: FLAG_HOLDS_VALUE_DEFAULT)
+        #  required = (if ind.len >= 5: ind[4].boolVal else: FLAG_REQUIRED_DEFAULT)
+
+        #parser_res.addFlag(short, long, description, holds_value, required)
+        
+
+      else:
+        raise newException(Defect, &"wrong kind of callIndent: '{indent_name}'")
+
+
+
+  # DEBUG
+  echo body.treeRepr
+
+  #echo body
+
+  parser
+
+
+
+template newParserTemplate*(
+  help_message: string = "",
+  settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
+  enforce_short: bool = DEFAULT_ENFORCE_SHORT,
+  no_colors: bool = NO_COLORS,
+  exit_on_error: bool = EXIT_ON_ERROR,
+  body: untyped
+): Parser =
+  #newParser()
+
+  var res = newParser(
+    help_message,
+    settings,
+    enforce_short,
+    no_colors,
+    exit_on_error
+  )
+
+  res

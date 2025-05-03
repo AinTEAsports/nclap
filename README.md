@@ -197,7 +197,8 @@ but will not enable compacting short flags (for example `./program -abc` will st
 ---
 ## TODO:
 Functionalities to be implemented in the future:
-    - [ ] Macro to set subcommands and params such as:
+<br></br>
+    - [ ] Macro to set subcommands and flags such as:
 ```nim
 var p = createParser("small todo app"):
   flag("-v", "--verbose", desc="shows debug information")
