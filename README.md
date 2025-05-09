@@ -34,15 +34,15 @@ p.addFlag("-h", "--help", "shows this help message")
 let args = p.parse()
 
 # you can access the flag value with the short or the long version
-if args--help.registered:
+if ?args.help:
   # NOTE: the `showHelp` message can be tuned,
   # try to tinker with the parameters and see what happens
   p.showHelp(exit_code=1)
 
-if args["-vv"].registered:
+if ?args.vv:
   echo "Showing additional information"
 
-echo "Output goes to: " & (args--output !! "/path/to/default_file")
+echo "Output goes to: " & (args.output !! "/path/to/default_file")
 # <=> echo "Output goes to: " & args["--output"].getContent(default="/path/to/default_file")
 ```
 ```sh
@@ -70,18 +70,18 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-if args..add.registered:
-  if args..task.registered:
-    echo "Adding task", args..add..task.getContent()
+if ?args@add:
+  if ?args@task:
+    echo "Adding task", !args@add@task
   else:
-    echo "Adding project", args..add..project.getContent()
-elif args..remove.registered:
-  if args..task.registered:
-    echo "Removing task", args..remove..task.getContent()
+    echo "Adding project", !args@add@project
+elif ?args@remove:
+  if ?args@task:
+    echo "Removing task", !args@remove@task
   else:
-    echo "Removing project", args..remove..project.getContent()
+    echo "Removing project", !args@remove@project
 else:
-  echo "Listing " & (if args..list..all.registered: "" else: "almost ") & "everything"
+  echo "Listing " & (if ?args@list@all: "" else: "almost ") & "everything"
 
 ```
 ```sh
@@ -111,22 +111,23 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
   .addCommand("list", @[newFlag("-a", "--all", "show even hidden tasks/projects")], "listing tasks and projects")
   .addFlag("-o", "--output", "outputs the content to a file", true)
 
-let args = p.parse()
-let out = (if args["-o"].registered: args["-o"].getContent(error=true) else: "")  # NOTE: we error if no value was found because the flag is supposed to be required
+let
+  args = p.parse()
+  out = !args.output
 
-if args..add.registered:
-  if args..task.registered:
-    outputTo(out, "Adding task" & args..add..task.getContent())
+if ?args@add:
+  if ?args@task:
+    outputTo(out, "Adding task" & !args@add@task)
   else:
-    outputTo(out, "Adding project" & args..add..project.getContent())
-elif args..remove.registered:
-  if not args..task["-n"]:
-    if args["task"].registered:
-      outputTo(out, "Removing task" & args..remove..task.getContent())
+    outputTo(out, "Adding project" & !args@add@project)
+elif ?args@remove:
+  if not ?args@task["-n"]:
+    if ?args@task:
+      outputTo(out, "Removing task" & !args@remove@task)
     else:
-      outputTo(out, "Removing project" & args..remove..project.getContent())
+      outputTo(out, "Removing project" & !args@remove@project)
 else:
-  outputTo(out, "Listing " & (args..list["-a"] ?? "almost") & " everything")
+  outputTo(out, "Listing " & (args@list["-a"] ?? "almost") & " everything")
 ```
 ```sh
 $ nim c examples/example3.nim
@@ -195,6 +196,20 @@ but will not enable compacting short flags (for example `./program -abc` will st
 
 
 ---
+## Operators
+There are operators used in the code, here are their use and equivalent
+
+
+#### Operators and
+- `args.arg` <=> `args["-arg"]` or `args["--arg"]` depending on what exists, I will use `args["--arg"]` from now on for simplification purposes
+- `args@arg` <=> `args["arg"]`, gets the `CLIArg` associated with the subcommand `arg`
+- `?args.arg` <=> `args["--arg"].registered`, returns `true` if the argument was given and `false` otherwise
+- `args.arg ?? some_value`, same as previous, but returns the content of the argument if it was registered, otherwise returns `some_value`
+- `!args.arg` <=> `args["--arg"].getContent(error=true)`, returns the value held inside the argument, and errors if none was given
+- `args.arg !! some_value`, same as previous, but if no value was held, returns `some_value`
+
+---
+
 ## TODO:
 Functionalities to be implemented in the future:
 <br></br>

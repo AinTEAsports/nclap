@@ -92,7 +92,7 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
 
 
 template `!!`*(cliarg: CLIArg, default: string): string =
-  cliarg.getContent(default, false)
+  cliarg.getContent(default, error=false)
 
 template `!`*(cliarg: CLIArg): string =
   cliarg.getContent(error=true)
@@ -114,19 +114,15 @@ template `@`*(cliargs: CLIArgs, name: untyped): CLIArg =
 
 
 template `.`*(cliarg: CLIArg, name: untyped): untyped =
-  (
-    let name_str = astToStr(name)
+  let name_str = astToStr(name)
 
-    if cliarg.subarguments.hasKey("-" & name_str): cliarg.subarguments["-" & name_str]
-    elif cliarg.subarguments.hasKey("--" & name_str): cliarg.subarguments["--" & name_str]
-    else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
-  )
+  if cliarg.subarguments.hasKey("-" & name_str): cliarg.subarguments["-" & name_str]
+  elif cliarg.subarguments.hasKey("--" & name_str): cliarg.subarguments["--" & name_str]
+  else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
 
 template `.`*(cliargs: CLIArgs, name: untyped): untyped =
-  (
-    let name_str = astToStr(name)
+  let name_str = astToStr(name)
 
-    if cliargs.hasKey("-" & name_str): cliargs["-" & name_str]
-    elif cliargs.hasKey("--" & name_str): cliargs["--" & name_str]
-    else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
-  )
+  if cliargs.hasKey("-" & name_str): cliargs["-" & name_str]
+  elif cliargs.hasKey("--" & name_str): cliargs["--" & name_str]
+  else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
