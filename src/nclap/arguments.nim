@@ -5,13 +5,11 @@ import std/[
   strutils
 ]
 
-import cliargs
-
 const
   FLAG_HOLDS_VALUE_DEFAULT* = false
   FLAG_REQUIRED_DEFAULT* = false
   COMMAND_REQUIRED_DEFAULT* = true
-  HAS_CONTENT_DEFAULT* = false
+  HOLDS_VALUE_DEFAULT* = false
   DEFAULT_SHOWHELP_SETTINGS* = (
     tabstring: "  ",
     prefix_pretab: "",
@@ -42,20 +40,18 @@ type
     Flag
 
   Argument* = ref object
+    description*: string
+    required*: bool
+    holds_value*: bool
+
     case kind*: ArgumentType
       of Flag:
         short*: string
         long*: string
-        holds_value*: bool
-        flag_description*: string
-        flag_required*: bool
 
       of Command:
         name*: string
         subcommands*: seq[Argument]
-        command_description*: string
-        command_required*: bool
-        has_content*: bool
 
 
 func newFlag*(
@@ -65,22 +61,29 @@ func newFlag*(
   holds_value: bool = FLAG_HOLDS_VALUE_DEFAULT,
   required: bool = FLAG_REQUIRED_DEFAULT
 ): Argument =
-  Argument(kind: Flag, short: short, long: long, flag_description: description, holds_value: holds_value, flag_required: required)
+  Argument(
+    kind: Flag,
+    short: short,
+    long: long,
+    description: description,
+    holds_value: holds_value,
+    required: required
+  )
 
 func newCommand*(
   name: string,
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
-  has_content: bool = HAS_CONTENT_DEFAULT
+  holds_value: bool = HOLDS_VALUE_DEFAULT
 ): Argument =
   Argument(
     kind: Command,
     name: name,
     subcommands: subcommands,
-    command_description: description,
-    command_required: required,
-    has_content: has_content
+    description: description,
+    required: required,
+    holds_value: holds_value
   )
 
 func `$`*(argument: Argument): string =
@@ -90,8 +93,8 @@ func `$`*(argument: Argument): string =
         s = argument.short
         l = argument.long
         h = argument.holds_value
-        desc = argument.flag_description
-        r = argument.flag_required
+        desc = argument.description
+        r = argument.required
 
       &"Flag(short: \"{s}\", long: \"{l}\", holds_value: {h}, description: \"{desc}\", required: {r})"
 
@@ -99,9 +102,9 @@ func `$`*(argument: Argument): string =
       let
         n = argument.name
         s = argument.subcommands
-        desc = argument.command_description
-        r = argument.command_required
-        h = argument.has_content
+        desc = argument.description
+        r = argument.required
+        h = argument.holds_value
 
       &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r}, has_content: {h})"
 
@@ -111,12 +114,6 @@ func getFlags*(arguments: seq[Argument]): seq[Argument] =
 
 func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
-
-
-func is_required(argument: Argument): bool =
-  case argument.kind
-    of Flag: argument.flag_required
-    of Command: argument.command_required
 
 
 func helpToStringAux(
@@ -145,8 +142,8 @@ func helpToStringAux(
     )
 
   let
-    surround_left = (if argument.is_required: surround_left_required else: surround_left_optional)
-    surround_right = (if argument.is_required: surround_right_required else: surround_right_optional)
+    surround_left = (if argument.required: surround_left_required else: surround_left_optional)
+    surround_right = (if argument.required: surround_right_required else: surround_right_optional)
 
   case argument.kind:
     of Flag:
@@ -155,7 +152,7 @@ func helpToStringAux(
           if argument.short == argument.long: &"{surround_left}{argument.short}{surround_right}"
           else: &"{surround_left}{argument.short}{separator}{argument.long}{surround_right}"
         )
-        desc = &"{argument.flag_description}"
+        desc = &"{argument.description}"
 
       # NOTE: no subcommands to a flag, it is the first but more importantly the last
       &"{prefix_pretab}{tabrepeat}{posttab}{usage}\t\t{desc}"
@@ -165,7 +162,7 @@ func helpToStringAux(
 
       let
         usage = &"{surround_left}{argument.name}{surround_right}"
-        desc = &"{argument.command_description}"
+        desc = &"{argument.description}"
 
       res &= &"{prefix_pretab}{tabrepeat}{posttab}{usage}\t\t{desc}"
 
