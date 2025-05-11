@@ -51,18 +51,11 @@ func get[A, B](table: Table[A, B], x: A): B =
 
 
 func `[]`*(cliarg: CLIArg, subargument_name: string): CLIArg =
-  #if cliarg.subarguments.hasKey(subargument_name): cliarg.subarguments.get(subargument_name)
-  #elif cliarg.subarguments.hasKey(&"-{subargument_name}"): cliarg.subarguments.get(&"-{subargument_name}")
-  #elif cliarg.subarguments.hasKey(&"--{subargument_name}"): cliarg.subarguments.get(&"--{subargument_name}")
-  #else: cliarg.subarguments[subargument_name]
-
   cliarg.subarguments.get(subargument_name)
 
 
 func `[]`*(cliargs: CLIArgs, cliarg_name: string): CLIArg =
   if cliargs.hasKey(cliarg_name): cliargs.get(cliarg_name)
-  #elif cliargs.hasKey(&"-{cliarg_name}"): cliargs.get(&"-{cliarg_name}")
-  #elif cliargs.hasKey(&"--{cliarg_name}"): cliargs.get(&"--{cliarg_name}")
   else: raise newException(KeyError, &"Key \"{cliarg_name}\" not found in CLIArgs")
 
 

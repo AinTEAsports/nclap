@@ -86,7 +86,7 @@ proc addCommand*(
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
-  has_content: bool = HAS_CONTENT_DEFAULT
+  has_content: bool = HOLDS_VALUE_DEFAULT
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
     error_exit(
@@ -97,7 +97,7 @@ proc addCommand*(
       parser.no_colors
     )
 
-  let required_subcommands = subcommands.getCommands().filter(cmd => cmd.command_required)
+  let required_subcommands = subcommands.getCommands().filter(cmd => cmd.required)
 
   if len(required_subcommands) != 0 and has_content:
     error_exit(
@@ -278,7 +278,7 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
       of Command:
         if not res.hasKey(argument.name):
           let content = (
-            if argument.has_content: some[string]("")
+            if argument.holds_value: some[string]("")
             else: none[string]()
           )
 
@@ -325,8 +325,6 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
   assert current_argv != ""
 
-
-
   if not valid_arguments.isValidArgument(current_argv):
     error_exit(
       parser.exit_on_error,
@@ -347,6 +345,8 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     # NOTE: This works, but if bugs (duplicates more precisely) try to put `argv_rest2` instead of `argv_rest`
     return (concatCLIArgs(res, next), argv_rest)
   else:
+    # TODO: insert here, check if is unnamed arg + DON'T FORGET RECURSION
+
     let
       current_command = valid_arguments.getCommand(current_argv, parser)
       (rest, argv_rest) = (
@@ -370,7 +370,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         else: some[string](argv_rest.join(" "))
       )
 
-    if not current_command.has_content and content.isSome:
+    if not current_command.holds_value and content.isSome:
       error_exit(
         parser.exit_on_error,
         ValueError,
@@ -379,7 +379,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         parser.no_colors
       )
 
-    if current_command.has_content and (content.isNone or (content.isSome and content.get() == "")):
+    if current_command.holds_value and (content.isNone or (content.isSome and content.get() == "")):
       error_exit(
         parser.exit_on_error,
         ValueError,
@@ -410,7 +410,7 @@ func checkForMissingCommand(
   let
     commands = valid_arguments.getCommands()
     required_and_registered = commands
-      .filter(cmd => cmd.command_required and cliargs[cmd.name].registered)
+      .filter(cmd => cmd.required and cliargs[cmd.name].registered)
 
   # NOTE: either no command registered or one since at most one command
   # can be registered per level
@@ -426,7 +426,7 @@ func checkForMissingCommand(
     )
   else:
     (
-      commands.filter(cmd => cmd.command_required and not cliargs[cmd.name].registered),
+      commands.filter(cmd => cmd.required and not cliargs[cmd.name].registered),
       some[Argument](prev_command)
     )
 
@@ -442,7 +442,7 @@ func checkForMissingFlags(
 
   let required_but_unregistered_flags = valid_arguments
     .getFlags()
-    .filter(arg => arg.flag_required and not cliargs[arg.long].registered)
+    .filter(arg => arg.required and not cliargs[arg.long].registered)
 
   if len(required_but_unregistered_flags) > 0: (required_but_unregistered_flags, some[Argument](prev_flag))
   else:
@@ -451,7 +451,7 @@ func checkForMissingFlags(
     # required flags
     let registered_command = valid_arguments
       .getCommands()
-      .filter(arg => arg.command_required and cliargs[arg.name].registered)
+      .filter(arg => arg.required and cliargs[arg.name].registered)
       .first()
 
     if registered_command.isNone: (@[], none[Argument]())
@@ -507,21 +507,6 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
 
 proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
-
-
-
-
-
-
-
-
-
-
-
-
-
-#func getOr[T](a: openArray[T], i: Natural, x: T): T {.inline.} =
-#  (if i < a.len: a[i] else: x)
 
 
 # NOTE:
