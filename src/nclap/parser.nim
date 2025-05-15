@@ -62,6 +62,7 @@ proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
     case argument.kind:
       of Flag:
         # NOTE: 1 for the "-" and 1 for the character, 1+1=2 (I'm a genius I know)
+        # NOTE: more seriously, this is enforcing one char length short flags
         if len(argument.short) != 2:
           error_exit(
             parser.exit_on_error,
@@ -86,7 +87,8 @@ proc addCommand*(
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
-  has_content: bool = HOLDS_VALUE_DEFAULT
+  has_content: bool = HOLDS_VALUE_DEFAULT,
+  default: Option[string] = none[string]()
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
     error_exit(
@@ -108,7 +110,7 @@ proc addCommand*(
       parser.no_colors
     )
 
-  parser.addArgument(newCommand(name, subcommands, description, required, has_content))
+  parser.addArgument(newCommand(name, subcommands, description, required, has_content, default))
 
 
 proc addFlag*(
@@ -117,7 +119,8 @@ proc addFlag*(
   long: string = short,
   description: string = long,
   holds_value: bool = FLAG_HOLDS_VALUE_DEFAULT,
-  required: bool = FLAG_REQUIRED_DEFAULT
+  required: bool = FLAG_REQUIRED_DEFAULT,
+  default: Option[string] = none[string]()
 ): var Parser {.discardable.} =
   # NOTE: this is a design choice, long flags can start with only a dash,
   # since if no long flag is given, the long flag will just be the short flag
@@ -130,7 +133,7 @@ proc addFlag*(
       parser.no_colors
     )
 
-  parser.addArgument(newFlag(short, long, description, holds_value, required))
+  parser.addArgument(newFlag(short, long, description, holds_value, required, default))
 
 
 func `$`*(parser: Parser): string =
@@ -261,6 +264,7 @@ proc parseFlags(
         else: some[string](content)
       ),
       registered: true,
+      default: current_flag.default,
       subarguments: initTable[string, CLIArg]()
     )
     res[current_flag.long] = res[current_flag.short]
@@ -285,12 +289,15 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
           res[argument.name] = CLIArg(
             content: content,
             registered: false,
+            #default: none[string](),
+            default: argument.default,
             subarguments: fillCLIArgs(argument.subcommands, depth+1)
           )
 
       of Flag:
         if not res.hasKey(argument.short) or not res.hasKey(argument.long):
-          res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
+          #res[argument.short] = CLIArg(content: none[string](), registered: false, default: none[string](), subarguments: initTable[string, CLIArg]())
+          res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg](), default: argument.default)
           res[argument.long] = res[argument.short]
 
   res
@@ -358,6 +365,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
           res[current_command.name] = CLIArg(
             content: none[string](),
             registered: true,
+            default: current_command.default,
             subarguments: res_subargs
           )
 
@@ -391,6 +399,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     res[current_command.name] = CLIArg(
       content: content,
       registered: true,
+      default: current_command.default,
       subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
     )
 
@@ -426,7 +435,9 @@ func checkForMissingCommand(
     )
   else:
     (
-      commands.filter(cmd => cmd.required and not cliargs[cmd.name].registered),
+      commands
+        .filter(cmd => cmd.required and not cliargs[cmd.name].registered)
+        .filter(cmd => cmd.required and not cliargs[cmd.name].default.isSome),
       some[Argument](prev_command)
     )
 
@@ -442,7 +453,17 @@ func checkForMissingFlags(
 
   let required_but_unregistered_flags = valid_arguments
     .getFlags()
-    .filter(arg => arg.required and not cliargs[arg.long].registered)
+    .filter(arg => (
+        let
+          is_required = arg.required
+          is_registered = cliargs[arg.long].registered
+          has_fallback_value = cliargs[arg.long].default.isSome
+
+        is_required and not is_registered and not has_fallback_value
+      )
+    )
+    #.filter(arg => arg.required and not cliargs[arg.long].registered)
+    #.filter(arg => arg.required and cliargs[arg.long].default.isNone)
 
   if len(required_but_unregistered_flags) > 0: (required_but_unregistered_flags, some[Argument](prev_flag))
   else:

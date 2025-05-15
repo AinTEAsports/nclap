@@ -8,6 +8,7 @@ import std/[
 type
   CLIArg* = object
     content*: Option[string]
+    default*: Option[string]  # NOTE: if is 'none', means no default was given and should error on 'not registered'
     registered*: bool
     subarguments*: Table[string, CLIArg]
 
@@ -15,16 +16,17 @@ type
 
 const
   DEFAULT_CONTENT = ""
-  DEFAULT_CLIARG = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
+  DEFAULT_CLIARG = CLIArg(content: none[string](), default: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
 
 
 func `$`*(cliarg: CLIArg): string =
   let
     c = cliarg.content
+    d = cliarg.default
     r = cliarg.registered
     s = cliarg.subarguments
 
-  &"CLIArg(content: {c}, registered: {r}, subarguments: {s})"
+  &"CLIArg(content: {c}, default: {d}, registered: {r}, subarguments: {s})"
 
 
 func `$`*(cliargs: CLIArgs): string =
@@ -88,7 +90,8 @@ template `!!`*(cliarg: CLIArg, default: string): string =
   cliarg.getContent(default, error=false)
 
 template `!`*(cliarg: CLIArg): string =
-  cliarg.getContent(error=true)
+  if cliarg.default.isSome: cliarg !! cliarg.default.get()
+  else: cliarg.getContent(error=true)
 
 
 template `?`*(cliarg: CLIArg): bool =
