@@ -8,6 +8,7 @@
 import
   std/[
     strformat,
+    options,
     unittest
   ],
 
@@ -326,3 +327,28 @@ import
 #
 #  let output: string = (args.output !! "default output btw")
 #  echo "output=" & output
+
+
+test "default param":
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addFlag("-t", "--target", "directory in which to do stuff", true, true, default=some("127.0.0.1"))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("that"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse(@["-p", "1-10", "-n", "-t", "localhost"])
+  #let args = p.parse(@["-n"])
+
+  #echo args
+  #echo args.add
+  #echo args.remove
+  #echo args?output
+  #echo "\n\n\n---\n\n\n"
+  #echo args.remove.task->n
+
+  #let output: string = (args.output !! "default output btw")
+  #echo !args.directory
+  #echo "output=" & output
+  echo !args.target
