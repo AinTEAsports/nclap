@@ -1,6 +1,7 @@
 import std/[
   tables,
   strformat,
+  strutils,
   options
 ]
 
@@ -110,14 +111,14 @@ template `@`*(cliargs: CLIArgs, name: untyped): CLIArg =
 
 
 template `.`*(cliarg: CLIArg, name: untyped): untyped =
-  let name_str = astToStr(name)
+  let name_str = astToStr(name).replace("_", "-")
 
   if cliarg.subarguments.hasKey("-" & name_str): cliarg.subarguments["-" & name_str]
   elif cliarg.subarguments.hasKey("--" & name_str): cliarg.subarguments["--" & name_str]
   else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
 
 template `.`*(cliargs: CLIArgs, name: untyped): untyped =
-  let name_str = astToStr(name)
+  let name_str = astToStr(name).replace("_", "-")
 
   if cliargs.hasKey("-" & name_str): cliargs["-" & name_str]
   elif cliargs.hasKey("--" & name_str): cliargs["--" & name_str]
