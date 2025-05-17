@@ -15,16 +15,6 @@ import
   nclap
 
 
-#import nclap/parser
-#import nclap/arguments
-#import nclap/cliargs
-
-#import nclap/[
-#  parser,
-#  arguments,
-#  cliargs
-#]
-
 #test "newArgument":
 #  echo "[DEBUG.TEST.newArgument] START"
 #  echo newFlag("-o", "--output", "output to a file", true)
@@ -271,17 +261,20 @@ import
 #    if not args["remove"]["-n"].registered: echo "Removing ", args["remove"].getContent()
 
 
-#test "compact shortflags":
-#  var p = newParser("compact shortflags test", enforce_short=true)
-#
-#  p.addFlag("-a", "--all", "all ?")
-#    .addFlag("-b", "--boolean", "show boolean format ? what are those flags dude")
-#    .addFlag("-c", "--check", "check what bro ? your capacity to write tests ?")
-#    .addFlag("-o", "--output", "finally a normal flag", holds_value=true, required=true)
-#
-#  let args = p.parse(@["-abco=yeah"])
-#
-#  echo args
+test "compact shortflags":
+  var p = newParser("compact shortflags test", enforce_short=true)
+
+  p.addFlag("-a", "--all", "all ?")
+    .addFlag("-b", "--boolean", "show boolean format ? what are those flags dude")
+    .addFlag("-c", "--check", "check what bro ? your capacity to write tests ?")
+    .addFlag("-o", "--output", "finally a normal flag", holds_value=true, required=true)
+
+  let args = p.parse(@["-abco=yeah"])
+
+  check ?args.all
+  check ?args.boolean
+  check ?args.c
+  check !args.output == "yeah"
 
 
 #test "customizing help message":
@@ -329,29 +322,20 @@ import
 #  echo "output=" & output
 
 
-#test "default param":
-#  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
-#
-#  p
-#    .addFlag("-t", "--target", "directory in which to do stuff", true, true, default=some("127.0.0.1"))
-#    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("that"))
-#    .addFlag("-n", "--no-log", "does not log anything", false, false)
-#    .addFlag("-o", "--output", "outputs the content to a file", true)
-#
-#  let args = p.parse(@["-p", "1-10", "-n", "-t", "localhost"])
-#  #let args = p.parse(@["-n"])
-#
-#  #echo args
-#  #echo args.add
-#  #echo args.remove
-#  #echo args?output
-#  #echo "\n\n\n---\n\n\n"
-#  #echo args.remove.task->n
-#
-#  #let output: string = (args.output !! "default output btw")
-#  #echo !args.directory
-#  #echo "output=" & output
-#  echo !args.target
+test "default param":
+  let default_target = "127.0.0.1"
+
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addFlag("-t", "--target", "target ip address", true, true, default=some(default_target))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("that"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse(@["-p", "1-10", "-n"])
+
+  check !args.target == default_target
 
 
 test "dot flag access":
@@ -364,16 +348,5 @@ test "dot flag access":
     .addFlag("-o", "--output", "outputs the content to a file", true)
 
   let args = p.parse(@["-p", "1-10", "-n", "-t", "localhost"])
-  #let args = p.parse(@["-n"])
 
-  #echo args
-  #echo args.add
-  #echo args.remove
-  #echo args?output
-  #echo "\n\n\n---\n\n\n"
-  #echo args.remove.task->n
-
-  #let output: string = (args.output !! "default output btw")
-  #echo !args.directory
-  #echo "output=" & output
-  echo &"No log ? => {?args.no_log}"
+  check ?args.no_log
