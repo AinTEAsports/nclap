@@ -1,5 +1,4 @@
-# This is just an example to get you started. You may wish to put all of your
-# tests into a single file, or separate them into multiple `test1`, `test2`
+# This is just an example to get you started. You may wish to put all of your tests into a single file, or separate them into multiple `test1`, `test2`
 # etc. files (better names are recommended, just make sure the name starts with
 # the letter 't').
 #
@@ -348,5 +347,19 @@ test "dot flag access":
     .addFlag("-o", "--output", "outputs the content to a file", true)
 
   let args = p.parse(@["-p", "1-10", "-n", "-t", "localhost"])
+
+  check ?args.no_log
+
+
+test "unnamed arguments":
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addUnnamedArgument("target", default=some("127.0.0.1"))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("that"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse(@["localhost", "-p", "1-10", "-n"])
 
   check ?args.no_log
