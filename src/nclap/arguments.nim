@@ -84,7 +84,7 @@ func newCommand*(
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
-  holds_value: bool = HOLDS_VALUE_DEFAULT,
+  #holds_value: bool = HOLDS_VALUE_DEFAULT,
   default: Option[string] = none[string]()
 ): Argument =
   Argument(
@@ -93,7 +93,7 @@ func newCommand*(
     subcommands: subcommands,
     description: description,
     required: required,
-    holds_value: holds_value,
+    holds_value: false,
     default: default
   )
 

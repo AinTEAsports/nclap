@@ -87,7 +87,7 @@ proc addCommand*(
   subcommands: seq[Argument] = @[],
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
-  has_content: bool = HOLDS_VALUE_DEFAULT,
+  #has_content: bool = HOLDS_VALUE_DEFAULT,
   default: Option[string] = none[string]()
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
@@ -99,18 +99,7 @@ proc addCommand*(
       parser.no_colors
     )
 
-  let required_subcommands = subcommands.getCommands().filter(cmd => cmd.required)
-
-  if len(required_subcommands) != 0 and has_content:
-    error_exit(
-      parser.exit_on_error,
-      FieldDefect,
-      &"A command cannot expect a content and have required subcommands (command: '{name}')",
-      INVALID_ARGUMENT_EXIT_CODE,
-      parser.no_colors
-    )
-
-  parser.addArgument(newCommand(name, subcommands, description, required, has_content, default))
+  parser.addArgument(newCommand(name, subcommands, description, required, default))
 
 
 proc addFlag*(
@@ -355,22 +344,15 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
     case argument.kind:
       of Command:
         if not res.hasKey(argument.name):
-          let content = (
-            if argument.holds_value: some[string]("")
-            else: none[string]()
-          )
-
           res[argument.name] = CLIArg(
-            content: content,
+            content: none[string](),
             registered: false,
-            #default: none[string](),
             default: argument.default,
             subarguments: fillCLIArgs(argument.subcommands, depth+1)
           )
 
       of Flag:
         if not res.hasKey(argument.short) or not res.hasKey(argument.long):
-          #res[argument.short] = CLIArg(content: none[string](), registered: false, default: none[string](), subarguments: initOrderedTable[string, CLIArg]())
           res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initOrderedTable[string, CLIArg](), default: argument.default)
           res[argument.long] = res[argument.short]
 
@@ -431,15 +413,12 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     # NOTE: This works, but if bugs (duplicates more precisely) try to put `argv_rest2` instead of `argv_rest`
     return (concatCLIArgs(res, next), argv_rest)
   else:
-    # TODO: insert here, check if is unnamed arg + DON'T FORGET RECURSION
-    #if (let otype = valid_arguments.getArgumentType(current_argv); otype.isSome and otype.get() == UnnamedArgument):
     if (
       let otype: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
       otype.isSome
     ):
 
       let
-        #o_current_ua: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
         o_current_ua = otype
         current_ua: Argument = (
           if o_current_ua.isNone:  # FIXME: useless since we check it in the if
@@ -484,31 +463,32 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
           else:
             parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
         )
-        content = (
-          if len(argv_rest) == 0: none[string]()
-          else: some[string](argv_rest.join(" "))
-        )
+        #content = (
+        #  if len(argv_rest) == 0: none[string]()
+        #  else: some[string](argv_rest.join(" "))
+        #)
+        #content = none[string]()
 
-      if not current_command.holds_value and content.isSome:
-        error_exit(
-          parser.exit_on_error,
-          ValueError,
-          &"command '{current_command.name}' should not have any content, yet it got '{content.get()}'",
-          INVALID_ARGUMENT_EXIT_CODE,
-          parser.no_colors
-        )
+      #if not current_command.holds_value and content.isSome:
+      #  error_exit(
+      #    parser.exit_on_error,
+      #    ValueError,
+      #    &"command '{current_command.name}' should not have any content, yet it got '{content.get()}'",
+      #    INVALID_ARGUMENT_EXIT_CODE,
+      #    parser.no_colors
+      #  )
 
-      if current_command.holds_value and (content.isNone or (content.isSome and content.get() == "")):
-        error_exit(
-          parser.exit_on_error,
-          ValueError,
-          &"command '{current_command.name}' should have some content, yet it didn't",
-          INVALID_ARGUMENT_EXIT_CODE,
-          parser.no_colors
-        )
+      #if current_command.holds_value and (content.isNone or (content.isSome and content.get() == "")):
+      #  error_exit(
+      #    parser.exit_on_error,
+      #    ValueError,
+      #    &"command '{current_command.name}' should have some content, yet it didn't",
+      #    INVALID_ARGUMENT_EXIT_CODE,
+      #    parser.no_colors
+      #  )
 
       res[current_command.name] = CLIArg(
-        content: content,
+        content: none[string](),
         registered: true,
         default: current_command.default,
         subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
