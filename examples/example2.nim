@@ -1,8 +1,6 @@
-import nclap/[
-  parser,
-  cliargs,
-  arguments
-]
+import nclap
+
+import fusion/matching
 
 var p = newParser("example number 2, commands only")
 
@@ -13,15 +11,11 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-if args.add.registered:
-  if args.task.registered:
-    echo "Adding task", args.add.task.getContent()
-  else:
-    echo "Adding project", args.add.project.getContent()
-elif args.remove.registered:
-  if args.task.registered:
-    echo "Removing task", args.remove.task.getContent()
-  else:
-    echo "Removing project", args.remove.project.getContent()
-else:
-  echo "Listing " & (if args.list.all.registered: "" else: "almost ") & "everything"
+match true:
+  of ?args.add:
+    echo "Adding " & (if ?args.add.task: "task" else: "project")
+  of ?args.remove:
+    echo "Removing" & (if ?args.add.task: "task" else: "project")
+  of ?args.list:
+    echo "Listing " & (if not ?args.list.all: "almost " else: "") & "everything"
+  else: assert false

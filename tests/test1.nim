@@ -11,7 +11,11 @@ import
     #unittest,
   ],
 
+  fusion/matching,
+
   nclap
+
+{.experimental: "caseStmtMacros".}
 
 template test(name: string, body: untyped): untyped =
   # NOTE: do not remove, makes all variable local and destroyed after test ran
@@ -394,3 +398,24 @@ test "total":
 
   check ?args.no_log
   check ?args.aggressivity
+
+test "example2":
+  
+  var p = newParser("example number 2, commands only")
+
+  # NOTE: p.addCommand(name, subcommands=@[], desc=name, required=true)
+  p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("project", @[], "adds a project")], "")
+    .addCommand("remove", @[newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
+    .addCommand("list", @[newCommand("all", @[], "lists everything", required=false)], "lists almost everything")
+
+  let args = p.parse()
+
+  case true:
+    of ?args.add:
+      echo "Adding " & (if ?args.add.task: "task" else: "project")
+    of ?args.remove:
+      echo "Removing" & (if ?args.add.task: "task" else: "project")
+    of ?args.list:
+      echo "Listing " & (if not ?args.list.all: "almost " else: "") & "everything"
+    else: assert false
+
