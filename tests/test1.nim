@@ -8,10 +8,19 @@ import
   std/[
     strformat,
     options,
-    unittest
+    #unittest,
   ],
 
   nclap
+
+template test(name: string, body: untyped): untyped =
+  # NOTE: do not remove, makes all variable local and destroyed after test ran
+  if true:
+    body
+
+template check(expr: untyped): untyped =
+  #check expr
+  assert expr
 
 
 #test "newArgument":
@@ -261,6 +270,7 @@ import
 
 
 test "compact shortflags":
+#task "test", "compact shortflags":
   var p = newParser("compact shortflags test", enforce_short=true)
 
   p.addFlag("-a", "--all", "all ?")
