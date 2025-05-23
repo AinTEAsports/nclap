@@ -227,7 +227,7 @@ proc getCommand(arguments: seq[Argument], argument_name: string, parser: Parser)
 
 
 proc getUnnamedArgument(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
-  for argument in arguments.getFlags():
+  for argument in arguments.getUnnamedArguments():
     if argument.ua_name == argument_name:
       return argument
 
@@ -248,28 +248,81 @@ func head[T](s: openArray[T]): Option[T] =
   some[T](s[0])
 
 
+#proc getFirstUnregisteredUnnamedArgument(arguments: seq[Argument], cliargs: CLIArgs, parser: Parser): Option[Argument] =
+#  #let tmp: seq[string] = collect(
+#  #  for name, cliarg in cliargs:
+#  #    if not cliarg.registered and name.startsWith(UNNAMED_ARGUMENT_PREFIX):
+#  #      name
+#  #)
+#
+#  var tmp: seq[string] = @[]
+#
+#  for name, cliarg in cliargs:
+#    if not cliarg.registered and name.startsWith(UNNAMED_ARGUMENT_PREFIX):
+#      tmp.add(name)
+#      echo &"[DEBUG] {name}"
+#
+#  #echo &"[DEBUG] {tmp}"
+#
+#  let o_first_unregistered_ua_name: Option[string] = tmp.head()
+#  echo &"[DEBUG] {o_first_unregistered_ua_name}"
+#
+#  #echo &"[DEBUG.getFirstUnregisteredUnnamedArgument {o_first_unregistered_ua_name.isSome}]"
+#  #echo &"[DEBUG.getFirstUnregisteredUnnamedArgument" & o_first_unregistered_ua_name.get()
+#
+#  if o_first_unregistered_ua_name.isNone:
+#    return none[Argument]()
+#
+#  let name: string = o_first_unregistered_ua_name.get()
+#
+#  return some[Argument](
+#    arguments.getUnnamedArgument(
+#      #o_first_unregistered_ua_name.get()[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
+#      name[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
+#      parser
+#    )
+#  )
+
+
 proc getFirstUnregisteredUnnamedArgument(arguments: seq[Argument], cliargs: CLIArgs, parser: Parser): Option[Argument] =
-  let o_first_unregistered_ua_name: Option[string] = collect(
-    for name, cliarg in cliargs:
-      if not cliarg.registered and name.startsWith(UNNAMED_ARGUMENT_PREFIX):
-        name
-  ).head()
+  var tmp: seq[string] = @[]
 
-  echo &"[DEBUG.getFirstUnregisteredUnnamedArgument {o_first_unregistered_ua_name.isSome}]"
-  #echo &"[DEBUG.getFirstUnregisteredUnnamedArgument" & o_first_unregistered_ua_name.get()
+  #for name, cliarg in cliargs:
+  for name in cliargs.keys():
+    let arg = cliargs[name]
 
-  if o_first_unregistered_ua_name.isNone:
+    if not arg.registered and name.startsWith(UNNAMED_ARGUMENT_PREFIX):
+      tmp.add(name)
+      echo "[DEBUG.for.tmp.add] name=" & name
+
+  echo "[DEBUG] END OF FOR LOOP=" & $tmp.len
+  echo "[DEBUG] END OF FOR LOOP=" & tmp[0]
+  echo "[DEBUG] END OF FOR LOOP=" & $tmp[0].len
+
+  #let name: string = (
+  #  if tmp.len == 0: return none[Argument]()
+  #  else: tmp[0]
+  #)
+
+  if tmp.len == 0:
     return none[Argument]()
 
-  let name: string = o_first_unregistered_ua_name.get()
+  #echo "[DEBUG] name_NOPREF=" & name[(UNNAMED_ARGUMENT_PREFIX.len)..^1]
+  var name_without_prefix = ""
+  for i in (UNNAMED_ARGUMENT_PREFIX.len) ..< tmp[0].len:
+  #for i in 1 ..< name.len:
+    echo name_without_prefix
+    #echo name[i]
+    name_without_prefix &= tmp[0][i]
 
   return some[Argument](
     arguments.getUnnamedArgument(
-      #o_first_unregistered_ua_name.get()[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
-      name[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
+      #name[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
+      name_without_prefix,
       parser
     )
   )
+
 
 
 proc getFlag(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
@@ -439,34 +492,49 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     #if (let otype = valid_arguments.getArgumentType(current_argv); otype.isSome and otype.get() == UnnamedArgument):
     if (
       let otype: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
-      #echo &"[DEBUG] if => {otype}"
       otype.isSome
     ):
-      #let current_ua = valid_arguments.getUnnamedArgument(current_argv, parser)
-      echo &"[DEBUG]: UNNAMED_ARGUMENT HERE: {current_argv}"
 
       let
-        o_current_ua: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
-        current_ua = (
-          if o_current_ua.isNone:
+        #o_current_ua: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
+        o_current_ua = otype
+        current_ua: Argument = (
+          if o_current_ua.isNone:  # FIXME: useless since we check it in the if
             error_exit(
               parser.exit_on_error,
               ValueError,
-              &"?????",
+              "Invalid supplementary unnamed argument",
               INVALID_ARGUMENT_EXIT_CODE,
               parser.no_colors
             )
           else: o_current_ua.get()
         )
 
-      res[UNNAMED_ARGUMENT_PREFIX & current_argv] = CLIArg(
+      #echo current_ua.ua_name
+
+      res[UNNAMED_ARGUMENT_PREFIX & current_ua.ua_name] = CLIArg(
         content: some[string](current_argv),
         registered: true,
         default: current_ua.default,
         subarguments: initOrderedTable[string, CLIArg]()
       )
 
-      return (res, argv[depth+1..^1])
+      #return (
+      #  res,
+      #  argv[depth+1..^1]
+      #)
+
+      #let (rest, argv_rest) = (
+        #let new_depth = parser.parseFlags(res_subargs, argv, depth+1, some[seq[Argument]](current_command.subcommands))
+        #parser.parseArgs(argv[depth+1..^1], valid_arguments )
+      #  proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
+      #)
+
+
+      let (rest, argv_rest) = parser.parseArgs(argv[depth+1..^1], valid_arguments=some[seq[Argument]](valid_arguments))
+
+      return (concatCLIArgs(res, rest), argv_rest)
+
     else:
       let
         current_command = valid_arguments.getCommand(current_argv, parser)
@@ -896,7 +964,6 @@ proc getStringValue(node: NimNode): string =
   of nnkTripleStrLit: node.strVal
   else: 
     error("Expected string literal", node)
-    ""
 
 # Process flag arguments and create the appropriate call
 proc processFlagArgs(args: seq[NimNode]): (string, string, string, bool, bool) =
@@ -1065,8 +1132,8 @@ macro newParserMacro*(name: string, body: untyped): untyped =
     allCalls = allCalls & calls
   
   # Build method chaining: parser.addFlag(...).addCommand(...)
-  var result = newStmtList()
-  result.add(parserDecl)
+  var res = newStmtList()
+  res.add(parserDecl)
   
   if allCalls.len > 0:
     var chainExpr = ident("parser")
@@ -1077,6 +1144,6 @@ macro newParserMacro*(name: string, body: untyped): untyped =
         call[0][0] = chainExpr
     
     # Add the final chained expression as a statement
-    result.add(chainExpr)
+    res.add(chainExpr)
   
-  result
+  res

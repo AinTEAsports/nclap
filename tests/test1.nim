@@ -360,6 +360,27 @@ test "unnamed arguments":
     .addFlag("-n", "--no-log", "does not log anything", false, false)
     .addFlag("-o", "--output", "outputs the content to a file", true)
 
-  let args = p.parse(@["localhost", "-p", "1-10", "-n"])
+  let args = p.parse(@["-n", "localhost"])
+
+  check !args.target == "localhost"
+  check ?args.no_log
+
+
+test "total":
+  let default_target = "127.0.0.1"
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addUnnamedArgument("target", default=some(default_target))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("1-65535"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+    .addFlag("-T", "--aggressivity", "outputs the content to a file", true, true)
+
+  let args = p.parse(@["-n", "-T=5"])
+
+  check not ?args.target
+  check !args.target == default_target
 
   check ?args.no_log
+  check ?args.aggressivity

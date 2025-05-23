@@ -13,7 +13,7 @@ type
     content*: Option[string]
     default*: Option[string]  # NOTE: if is 'none', means no default was given and should error on 'not registered'
     registered*: bool
-    subarguments*: OrderedTable[string, CLIArg]
+    subarguments*: OrderedTable[string, CLIArg]  # NOTE: ordered to keep the order of unnamed arguments to get the first non registered
 
   CLIArgs* = OrderedTable[string, CLIArg]
 
