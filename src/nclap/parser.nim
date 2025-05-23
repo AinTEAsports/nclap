@@ -74,11 +74,11 @@ proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
         else: parser.arguments.add(argument)
       of Command:
         parser.arguments.add(argument)
+      of UnnamedArgument:
+        parser.arguments.add(argument)
   else: parser.arguments.add(argument)
 
   parser
-
-
 
 
 proc addCommand*(
@@ -136,6 +136,17 @@ proc addFlag*(
   parser.addArgument(newFlag(short, long, description, holds_value, required, default))
 
 
+proc addUnnamedArgument*(
+  parser: var Parser,
+  name: string,
+  description: string = name,
+  default: Option[string] = none[string]()
+): var Parser {.discardable.} =
+  # NOTE: this is a design choice, long flags can start with only a dash,
+  # since if no long flag is given, the long flag will just be the short flag
+  parser.addArgument(newUnnamedArgument(name, description, default))
+
+
 func `$`*(parser: Parser): string =
   &"Parser(arguments: {parser.arguments}, helpmsg: \"{parser.helpmsg}\")"
 
@@ -175,8 +186,29 @@ func isValidArgument(arguments: seq[Argument], argument_name: string): bool =
       of Flag:
         if argument.long == argname or argument.short == argname:
           return true
+      of UnnamedArgument:
+        if argument.ua_name == argument_name:
+          return true
 
   false
+
+
+func getArgumentType(arguments: seq[Argument], argument_name: string): Option[ArgumentType] =
+  let argname = (if argument_name.contains('='): argument_name.split('=')[0] else: argument_name)
+
+  for argument in arguments:
+    case argument.kind:
+      of Command:
+        if argument.name == argname:
+          return some[ArgumentType](Command)
+      of Flag:
+        if argument.long == argname or argument.short == argname:
+          return some[ArgumentType](Flag)
+      of UnnamedArgument:
+        if argument.ua_name == argument_name:
+          return some[ArgumentType](UnnamedArgument)
+
+  none[ArgumentType]()
 
 
 proc getCommand(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
@@ -194,6 +226,49 @@ proc getCommand(arguments: seq[Argument], argument_name: string, parser: Parser)
   )
 
 
+proc getUnnamedArgument(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
+  for argument in arguments.getUnnamedArguments():
+    if argument.ua_name == argument_name:
+      return argument
+
+  # NOTE: should be impossible since we check before calling this function
+  error_exit(
+    parser.exit_on_error,
+    FieldDefect,
+    &"Invalid flag: '{argument_name}'",
+    INVALID_ARGUMENT_EXIT_CODE,
+    parser.no_colors
+  )
+
+
+func head[T](s: openArray[T]): Option[T] =
+  if s.len == 0:
+    return none[T]()
+
+  some[T](s[0])
+
+
+proc getFirstUnregisteredUnnamedArgument(arguments: seq[Argument], cliargs: CLIArgs, parser: Parser): Option[Argument] =
+  let first_name_o = collect(
+    for name, cliarg in cliargs:
+      if not cliarg.registered and name.startsWith(UNNAMED_ARGUMENT_PREFIX):
+        name
+  ).head()
+
+  if first_name_o.isNone:
+    return none[Argument]()
+
+  let name_with_prefix = first_name_o.get()
+
+  return some[Argument](
+    arguments.getUnnamedArgument(
+      name_with_prefix[(UNNAMED_ARGUMENT_PREFIX.len)..^1],  # NOTE: we remove the UNNAMED_ARGUMENT_PREFIX
+      parser
+    )
+  )
+
+
+
 proc getFlag(arguments: seq[Argument], argument_name: string, parser: Parser): Argument =
   let argname = (if argument_name.contains('='): argument_name.split('=')[0] else: argument_name)
 
@@ -209,7 +284,6 @@ proc getFlag(arguments: seq[Argument], argument_name: string, parser: Parser): A
     INVALID_ARGUMENT_EXIT_CODE,
     parser.no_colors
   )
-
 
 
 # NOTE: argv_rest = parser.parseFlags(res, argv, depth, valid_arguments)
@@ -265,7 +339,7 @@ proc parseFlags(
       ),
       registered: true,
       default: current_flag.default,
-      subarguments: initTable[string, CLIArg]()
+      subarguments: initOrderedTable[string, CLIArg]()
     )
     res[current_flag.long] = res[current_flag.short]
 
@@ -275,7 +349,7 @@ proc parseFlags(
 
 
 func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
-  var res = initTable[string, CLIArg]()
+  var res = initOrderedTable[string, CLIArg]()
 
   for argument in arguments:
     case argument.kind:
@@ -296,16 +370,19 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
 
       of Flag:
         if not res.hasKey(argument.short) or not res.hasKey(argument.long):
-          #res[argument.short] = CLIArg(content: none[string](), registered: false, default: none[string](), subarguments: initTable[string, CLIArg]())
-          res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initTable[string, CLIArg](), default: argument.default)
+          #res[argument.short] = CLIArg(content: none[string](), registered: false, default: none[string](), subarguments: initOrderedTable[string, CLIArg]())
+          res[argument.short] = CLIArg(content: none[string](), registered: false, subarguments: initOrderedTable[string, CLIArg](), default: argument.default)
           res[argument.long] = res[argument.short]
+
+      of UnnamedArgument:
+        res[UNNAMED_ARGUMENT_PREFIX & argument.ua_name] = CLIArg(content: none[string](), registered: false, subarguments: initOrderedTable[string, CLIArg](), default: argument.default)
 
   res
 
 
 proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
   if len(argv) == 0 or start >= len(argv):
-    return (initTable[string, CLIArg](), @[])
+    return (initOrderedTable[string, CLIArg](), @[])
 
   var
     valid_arguments = valid_arguments.get(parser.arguments)  # NOTE: get the value, or if there is none, take `parser.arguments` by default
@@ -332,14 +409,16 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
 
   assert current_argv != ""
 
-  if not valid_arguments.isValidArgument(current_argv):
-    error_exit(
-      parser.exit_on_error,
-      ValueError,
-      &"Invalid argument: '{current_argv}'",
-      INVALID_ARGUMENT_EXIT_CODE,
-      parser.no_colors
-    )
+  # DEBUG: commented this
+  # TODO: implement a count of unknown flags and it has to match the number of unnamed arguments otherwise error
+  #if not valid_arguments.isValidArgument(current_argv):
+  #  error_exit(
+  #    parser.exit_on_error,
+  #    ValueError,
+  #    &"Invalid argument: '{current_argv}'",
+  #    INVALID_ARGUMENT_EXIT_CODE,
+  #    parser.no_colors
+  #  )
 
   # NOTE: from this point we assert the current argument is valid, it exists
   if current_argv.startsWith('-'):
@@ -353,55 +432,87 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
     return (concatCLIArgs(res, next), argv_rest)
   else:
     # TODO: insert here, check if is unnamed arg + DON'T FORGET RECURSION
+    #if (let otype = valid_arguments.getArgumentType(current_argv); otype.isSome and otype.get() == UnnamedArgument):
+    if (
+      let otype: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
+      otype.isSome
+    ):
 
-    let
-      current_command = valid_arguments.getCommand(current_argv, parser)
-      (rest, argv_rest) = (
-        if len(current_command.subcommands) == 0: (initTable[string, CLIArg](), argv[depth+1..^1])
-        elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
-          var res_subargs = res[current_command.name].subarguments
-          let new_depth = parser.parseFlags(res_subargs, argv, depth+1, some[seq[Argument]](current_command.subcommands))
+      let
+        #o_current_ua: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
+        o_current_ua = otype
+        current_ua: Argument = (
+          if o_current_ua.isNone:  # FIXME: useless since we check it in the if
+            error_exit(
+              parser.exit_on_error,
+              ValueError,
+              "Invalid supplementary unnamed argument",
+              INVALID_ARGUMENT_EXIT_CODE,
+              parser.no_colors
+            )
+          else: o_current_ua.get()
+        )
 
-          res[current_command.name] = CLIArg(
-            content: none[string](),
-            registered: true,
-            default: current_command.default,
-            subarguments: res_subargs
-          )
-
-          (res_subargs, argv[new_depth..^1])
-        else:
-          parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
-      )
-      content = (
-        if len(argv_rest) == 0: none[string]()
-        else: some[string](argv_rest.join(" "))
-      )
-
-    if not current_command.holds_value and content.isSome:
-      error_exit(
-        parser.exit_on_error,
-        ValueError,
-        &"command '{current_command.name}' should not have any content, yet it got '{content.get()}'",
-        INVALID_ARGUMENT_EXIT_CODE,
-        parser.no_colors
+      res[UNNAMED_ARGUMENT_PREFIX & current_ua.ua_name] = CLIArg(
+        content: some[string](current_argv),
+        registered: true,
+        default: current_ua.default,
+        subarguments: initOrderedTable[string, CLIArg]()
       )
 
-    if current_command.holds_value and (content.isNone or (content.isSome and content.get() == "")):
-      error_exit(
-        parser.exit_on_error,
-        ValueError,
-        &"command '{current_command.name}' should have some content, yet it didn't",
-        INVALID_ARGUMENT_EXIT_CODE,
-        parser.no_colors
-      )
+      let (rest, argv_rest) = parser.parseArgs(argv[depth+1..^1], valid_arguments=some[seq[Argument]](valid_arguments))
 
-    res[current_command.name] = CLIArg(
-      content: content,
-      registered: true,
-      default: current_command.default,
-      subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
-    )
+      return (concatCLIArgs(res, rest), argv_rest)
+
+    else:
+      let
+        current_command = valid_arguments.getCommand(current_argv, parser)
+        (rest, argv_rest) = (
+          if len(current_command.subcommands) == 0: (initOrderedTable[string, CLIArg](), argv[depth+1..^1])
+          elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
+            var res_subargs = res[current_command.name].subarguments
+            let new_depth = parser.parseFlags(res_subargs, argv, depth+1, some[seq[Argument]](current_command.subcommands))
+
+            res[current_command.name] = CLIArg(
+              content: none[string](),
+              registered: true,
+              default: current_command.default,
+              subarguments: res_subargs
+            )
+
+            (res_subargs, argv[new_depth..^1])
+          else:
+            parser.parseArgs(argv, depth+1, some[seq[Argument]](current_command.subcommands))
+        )
+        content = (
+          if len(argv_rest) == 0: none[string]()
+          else: some[string](argv_rest.join(" "))
+        )
+
+      if not current_command.holds_value and content.isSome:
+        error_exit(
+          parser.exit_on_error,
+          ValueError,
+          &"command '{current_command.name}' should not have any content, yet it got '{content.get()}'",
+          INVALID_ARGUMENT_EXIT_CODE,
+          parser.no_colors
+        )
+
+      if current_command.holds_value and (content.isNone or (content.isSome and content.get() == "")):
+        error_exit(
+          parser.exit_on_error,
+          ValueError,
+          &"command '{current_command.name}' should have some content, yet it didn't",
+          INVALID_ARGUMENT_EXIT_CODE,
+          parser.no_colors
+        )
+
+      res[current_command.name] = CLIArg(
+        content: content,
+        registered: true,
+        default: current_command.default,
+        subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
+      )
 
   (res, @[])
 
@@ -462,8 +573,6 @@ func checkForMissingFlags(
         is_required and not is_registered and not has_fallback_value
       )
     )
-    #.filter(arg => arg.required and not cliargs[arg.long].registered)
-    #.filter(arg => arg.required and cliargs[arg.long].default.isNone)
 
   if len(required_but_unregistered_flags) > 0: (required_but_unregistered_flags, some[Argument](prev_flag))
   else:
@@ -528,84 +637,3 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
 
 proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
-
-
-# NOTE:
-  # take in a call statement and return a Argument
-  # or take in a list of call statements and return a seq[Argument]
-  # then specify which is the current arg if needed, otherwise create a new one
-macro newParserMacro(parser: var Parser, body: untyped): seq[Argument] =
-  body.expectKind nnkStmtList
-
-  # NOTE: only use this if weird problems
-  #body.expectMinLen 1
-  #body[0].expectKind nnkCall
-
-  for ind in body:
-    ind.expectKind nnkCall
-
-    let indent_name = ind[0].strVal
-
-    case indent_name:
-      of "command":
-        discard
-
-        #let
-        #  name = ind[1].strVal
-        #  description = (if ind.len >= 2: ind[1].strVal else: name)
-        #  required = (if ind.len >= 3: ind[2].boolVal else: COMMAND_REQUIRED_DEFAULT)
-        #  has_content = (if ind.len >= 4: ind[3].boolVal else: HAS_CONTENT_DEFAULT)
-        #
-        #
-        #echo &"{name}, {description}, {required}, {has_content}"
-
-        # NOTE: get the recursive case
-        #if ind[^1].kind == nnkStmtList:
-
-
-      of "flag":
-        discard
-
-        #let
-        #  short = ind[1].strVal
-        #  long = (if ind.len >= 2: ind[1].strVal else: short)
-        #  description = (if ind.len >= 3: ind[2].strVal else: long)
-        #  holds_value = (if ind.len >= 4: ind[3].boolVal else: FLAG_HOLDS_VALUE_DEFAULT)
-        #  required = (if ind.len >= 5: ind[4].boolVal else: FLAG_REQUIRED_DEFAULT)
-
-        #parser_res.addFlag(short, long, description, holds_value, required)
-        
-
-      else:
-        raise newException(Defect, &"wrong kind of callIndent: '{indent_name}'")
-
-
-
-  # DEBUG
-  echo body.treeRepr
-
-  #echo body
-
-  parser
-
-
-
-template newParserTemplate*(
-  help_message: string = "",
-  settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
-  enforce_short: bool = DEFAULT_ENFORCE_SHORT,
-  no_colors: bool = NO_COLORS,
-  exit_on_error: bool = EXIT_ON_ERROR,
-  body: untyped
-): Parser =
-  #newParser()
-
-  var res = newParser(
-    help_message,
-    settings,
-    enforce_short,
-    no_colors,
-    exit_on_error
-  )
-
-  res

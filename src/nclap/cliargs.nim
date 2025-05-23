@@ -7,18 +7,19 @@ import std/[
 
 
 type
+  # NOTE: unnamed arguments will be stored as '$<unnamed_arg>' for simplicity reasons
+  # therefore it's not possible to make a flag nor a subcommand that starts with '$'
   CLIArg* = object
     content*: Option[string]
     default*: Option[string]  # NOTE: if is 'none', means no default was given and should error on 'not registered'
     registered*: bool
-    subarguments*: Table[string, CLIArg]
+    subarguments*: OrderedTable[string, CLIArg]  # NOTE: ordered to keep the order of unnamed arguments to get the first non registered
 
-  CLIArgs* = Table[string, CLIArg]
+  CLIArgs* = OrderedTable[string, CLIArg]
 
 const
   DEFAULT_CONTENT = ""
-  DEFAULT_CLIARG = CLIArg(content: none[string](), default: none[string](), registered: false, subarguments: initTable[string, CLIArg]())
-
+  DEFAULT_CLIARG = CLIArg(content: none[string](), default: none[string](), registered: false, subarguments: initOrderedTable[string, CLIArg]())
 
 func `$`*(cliarg: CLIArg): string =
   let
@@ -46,7 +47,7 @@ func tostring*(cliarg: CLIArg): string =
 func tostring*(cliargs: CLIArgs): string =
   $cliargs
 
-func get[A, B](table: Table[A, B], x: A): B =
+func get[A, B](table: OrderedTable[A, B], x: A): B =
   if not table.hasKey(x):
     raise newException(KeyError, &"Key \"{x}\" not found")
 
@@ -115,6 +116,7 @@ template `.`*(cliarg: CLIArg, name: untyped): untyped =
 
   if cliarg.subarguments.hasKey("-" & name_str): cliarg.subarguments["-" & name_str]
   elif cliarg.subarguments.hasKey("--" & name_str): cliarg.subarguments["--" & name_str]
+  elif cliarg.subarguments.hasKey(UNNAMED_ARGUMENT_PREFIX & name_str): cliarg.subarguments[UNNAMED_ARGUMENT_PREFIX & name_str]
   else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")
 
 template `.`*(cliargs: CLIArgs, name: untyped): untyped =
@@ -122,4 +124,5 @@ template `.`*(cliargs: CLIArgs, name: untyped): untyped =
 
   if cliargs.hasKey("-" & name_str): cliargs["-" & name_str]
   elif cliargs.hasKey("--" & name_str): cliargs["--" & name_str]
+  elif cliargs.hasKey(UNNAMED_ARGUMENT_PREFIX & name_str): cliargs[UNNAMED_ARGUMENT_PREFIX & name_str]
   else: raise newException(KeyError, "Key \"" & name_str & "\" not found in CLIArgs")

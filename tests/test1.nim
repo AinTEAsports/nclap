@@ -1,5 +1,4 @@
-# This is just an example to get you started. You may wish to put all of your
-# tests into a single file, or separate them into multiple `test1`, `test2`
+# This is just an example to get you started. You may wish to put all of your tests into a single file, or separate them into multiple `test1`, `test2`
 # etc. files (better names are recommended, just make sure the name starts with
 # the letter 't').
 #
@@ -9,10 +8,19 @@ import
   std/[
     strformat,
     options,
-    unittest
+    #unittest,
   ],
 
   nclap
+
+template test(name: string, body: untyped): untyped =
+  # NOTE: do not remove, makes all variable local and destroyed after test ran
+  if true:
+    body
+
+template check(expr: untyped): untyped =
+  #check expr
+  assert expr
 
 
 #test "newArgument":
@@ -262,6 +270,7 @@ import
 
 
 test "compact shortflags":
+#task "test", "compact shortflags":
   var p = newParser("compact shortflags test", enforce_short=true)
 
   p.addFlag("-a", "--all", "all ?")
@@ -350,3 +359,38 @@ test "dot flag access":
   let args = p.parse(@["-p", "1-10", "-n", "-t", "localhost"])
 
   check ?args.no_log
+
+
+test "unnamed arguments":
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addUnnamedArgument("target", default=some("127.0.0.1"))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("that"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+
+  let args = p.parse(@["-n", "localhost"])
+
+  check !args.target == "localhost"
+  check ?args.no_log
+
+
+test "total":
+  let default_target = "127.0.0.1"
+  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+
+  p
+    .addUnnamedArgument("target", default=some(default_target))
+    .addFlag("-p", "--ports", "ports to scan", true, true, default=some("1-65535"))
+    .addFlag("-n", "--no-log", "does not log anything", false, false)
+    .addFlag("-o", "--output", "outputs the content to a file", true)
+    .addFlag("-T", "--aggressivity", "outputs the content to a file", true, true)
+
+  let args = p.parse(@["-n", "-T=5"])
+
+  check not ?args.target
+  check !args.target == default_target
+
+  check ?args.no_log
+  check ?args.aggressivity

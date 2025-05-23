@@ -10,6 +10,7 @@ const
   FLAG_HOLDS_VALUE_DEFAULT* = false
   FLAG_REQUIRED_DEFAULT* = false
   COMMAND_REQUIRED_DEFAULT* = true
+  UNNAMED_ARGUMENT_PREFIX* = "$"
   HOLDS_VALUE_DEFAULT* = false
   DEFAULT_SHOWHELP_SETTINGS* = (
     tabstring: "  ",
@@ -39,6 +40,7 @@ type
   ArgumentType* = enum
     Command
     Flag
+    UnnamedArgument
 
   Argument* = ref object
     description*: string
@@ -54,6 +56,9 @@ type
       of Command:
         name*: string
         subcommands*: seq[Argument]
+
+      of UnnamedArgument:
+        ua_name*: string
 
 
 func newFlag*(
@@ -92,6 +97,22 @@ func newCommand*(
     default: default
   )
 
+
+func newUnnamedArgument*(
+  name: string,
+  description: string = name,
+  default: Option[string] = none[string]()
+): Argument =
+  Argument(
+    kind: UnnamedArgument,
+    ua_name: name,
+    holds_value: true,
+    description: description,
+    required: true,
+    default: default
+  )
+
+
 func `$`*(argument: Argument): string =
   case argument.kind
     of Flag:
@@ -116,12 +137,18 @@ func `$`*(argument: Argument): string =
 
       &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r}, has_content: {h}, default: {def})"
 
+    of UnnamedArgument:
+      &"[WARNING]: not implemented yet"
+
 
 func getFlags*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Flag)
 
 func getCommands*(arguments: seq[Argument]): seq[Argument] =
   arguments.filter(arg => arg.kind == Command)
+
+func getUnnamedArguments*(arguments: seq[Argument]): seq[Argument] =
+  arguments.filter(arg => arg.kind == UnnamedArgument)
 
 
 func helpToStringAux(
@@ -182,6 +209,9 @@ func helpToStringAux(
         res &= "\n" & subargument.helpToStringAux(settings=settings, depth=depth+1, is_last=is_last_argument)
 
       res
+
+    of UnnamedArgument:
+      &"[WARNING]: still not implemented"
 
 
 func helpToString*(
