@@ -2,6 +2,7 @@ import std/[
   strformat,
   strutils,
   sugar,
+  macros,
 ]
 
 const
@@ -68,3 +69,52 @@ func error*(error_header, error_message: string, no_colors: bool = DEFAULT_NO_CO
       &"{COLORS.red}{error_header}{COLORS.reset}" &
       &"{COLORS.bold_black}]{COLORS.reset}"
   ) & " " & error_message
+
+
+
+macro commandMatch*(of_branches: varargs[untyped]): untyped =
+  if of_branches.len == 0:
+    error("expected at least one branch", of_branches)
+
+  var res = nnkIfStmt.newTree()
+
+  for branch in of_branches:
+    # NOTE: `false or B` <=> `B`
+    var condition = newLit(false)
+
+    case branch.kind:
+      of nnkOfBranch:
+        # NOTE: => false or (a or (b or (c)))
+
+        let
+          of_keys = branch[0..^2]
+          of_body = branch[^1]
+
+        # NOTE: last branch is the body
+        for of_key in of_keys:
+          condition = newCall(
+            "or",
+
+            # NOTE: both are valid since '?`branch[0]`' <=> '`branch[0]`.registered'
+            # but I prefer `.registered` since this most likely won't change
+            #newCall("?", newPar(branch[0])),
+            newDotExpr(newPar(branch[0]), newIdentNode("registered")),
+
+            condition,
+          )
+
+        res.add nnkElifBranch.newTree(
+          condition,
+          of_body
+        )
+
+      of nnkElse:
+        # NOTE: `else:` <=> `elif true:`
+        res.add nnkElse.newTree(
+          branch[0]
+        )
+
+      else:
+        error("should be 'of' or 'else' branch", branch)
+
+  res

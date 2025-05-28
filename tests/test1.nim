@@ -8,6 +8,7 @@ import
   std/[
     strformat,
     options,
+    macros
     #unittest,
   ],
 
@@ -408,14 +409,12 @@ test "example2":
     .addCommand("remove", @[newCommand("task", @[], "removes a task"), newCommand("project", @[], "removes a project")], "")
     .addCommand("list", @[newCommand("all", @[], "lists everything", required=false)], "lists almost everything")
 
-  let args = p.parse()
+  let args = p.parse(@["add", "task"])
 
-  case true:
-    of ?args.add:
-      echo "Adding " & (if ?args.add.task: "task" else: "project")
-    of ?args.remove:
-      echo "Removing" & (if ?args.add.task: "task" else: "project")
-    of ?args.list:
-      echo "Listing " & (if not ?args.list.all: "almost " else: "") & "everything"
-    else: assert false
+  let choice = commandMatch:
+  of args@add: 1
+  of args@remove: 2
+  of args@list: 3
+  else: 4
 
+  check choice == 1
