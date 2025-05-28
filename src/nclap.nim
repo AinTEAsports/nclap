@@ -6,8 +6,10 @@ import nclap/[
   parser,
   cliargs,
   arguments,
+  utils,
 ]
 
 export parser
 export cliargs
 export arguments
+export utils
