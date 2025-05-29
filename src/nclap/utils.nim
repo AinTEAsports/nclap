@@ -76,7 +76,10 @@ macro commandMatch*(of_branches: varargs[untyped]): untyped =
   if of_branches.len == 0:
     error("expected at least one branch", of_branches)
 
-  var res = nnkIfStmt.newTree()
+  var
+    res = nnkIfStmt.newTree()
+    else_branch = false
+    last_body = newEmptyNode()
 
   for branch in of_branches:
     # NOTE: `false or B` <=> `B`
@@ -103,18 +106,34 @@ macro commandMatch*(of_branches: varargs[untyped]): untyped =
             condition,
           )
 
+
         res.add nnkElifBranch.newTree(
           condition,
           of_body
         )
 
+        last_body = of_body
+
       of nnkElse:
         # NOTE: `else:` <=> `elif true:`
+        else_branch = true
+
         res.add nnkElse.newTree(
           branch[0]
         )
 
+        last_body = branch[0]
+
       else:
         error("should be 'of' or 'else' branch", branch)
 
+  if not else_branch:
+    res.add nnkElse.newTree(
+      quote do:
+        assert false, "no value matched"
+        `last_body`  # NOTE: this is added for expression value return
+                     # but it will never reach because of the assert
+    )
+
+  echo (repr res)
   res

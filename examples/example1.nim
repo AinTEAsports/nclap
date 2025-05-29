@@ -17,4 +17,10 @@ if ?args.help:  # ?args.help <=> ?args.h
 if ?args.verbose:  # ?args.verbose <=> ?args.vv
   echo "Showing additional information"
 
+
+# NOTE: this also works
+commandMatch:
+of args.help: p.showHelp(exit_code=1)
+of args.verbose: echo "Showing additional information"
+
 echo "Output goes to: " & !args.output

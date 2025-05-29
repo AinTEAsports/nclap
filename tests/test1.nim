@@ -415,6 +415,6 @@ test "example2":
   of args@add: 1
   of args@remove: 2
   of args@list: 3
-  else: 4
+  #else: 4
 
   check choice == 1
