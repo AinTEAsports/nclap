@@ -211,7 +211,8 @@ func helpToStringAux(
       res
 
     of UnnamedArgument:
-      &"[WARNING]: still not implemented"
+      &"{tabrepeat}({argument.ua_name})\t{argument.description}"
+      #&"[WARNING]: still not implemented"
 
 
 func helpToString*(

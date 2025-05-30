@@ -28,7 +28,7 @@ test "initParser macro":
       Command("all", "lists all tasks, even the hidden ones")
 
 
-  let args = parser.parse(@["add", "task number 1"])
+  let args = parser.parse(@["add"])
 
   echo args
 
