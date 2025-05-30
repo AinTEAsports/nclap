@@ -35,7 +35,7 @@ func `$`*(cliargs: CLIArgs): string =
   result &= "{\n"
 
   for name, cliarg in cliargs:
-    result &= &"\t\"{name}\": {cliarg},\n"
+    result &= &"\t\"{name}\": {$cliarg},\n"
 
   result &= "}"
 

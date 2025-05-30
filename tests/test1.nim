@@ -9,24 +9,12 @@ import
     strformat,
     options,
     macros
-    #unittest,
   ],
 
   fusion/matching,
 
-  nclap
-
-{.experimental: "caseStmtMacros".}
-
-template test(name: string, body: untyped): untyped =
-  # NOTE: do not remove, makes all variable local and destroyed after test ran
-  if true:
-    body
-
-template check(expr: untyped): untyped =
-  #check expr
-  assert expr
-
+  nclap,
+  testutils
 
 #test "newArgument":
 #  echo "[DEBUG.TEST.newArgument] START"

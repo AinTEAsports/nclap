@@ -135,5 +135,4 @@ macro commandMatch*(of_branches: varargs[untyped]): untyped =
                      # but it will never reach because of the assert
     )
 
-  echo (repr res)
   res

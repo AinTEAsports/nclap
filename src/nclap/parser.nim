@@ -617,3 +617,111 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
 
 proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
+
+
+func parseArgumentBody(argument: NimNode): NimNode =
+  var argument_construct = nnkCall.newTree()
+
+  if argument.kind != nnkCall:
+    error("should be a call <kind_of_argument>(<args>...)", argument)
+
+  let
+    argument_kind = argument[0]
+    transformed_name = ($argument_kind).toLowerAscii().replace("_", "")
+
+  case transformed_name:
+    of "command":
+      argument_construct.add ident("newCommand")
+
+      let
+        has_subcommands = (argument[^1].kind == nnkStmtList)
+        last_index = (if has_subcommands: ^2 else: ^1)
+
+      # NOTE: here parse subcommands
+      # it will be `newSeq(<arg_construct1>, <arg_construct2>, ...)`
+      var subcommands: seq[NimNode] = @[]
+
+      #debugEcho (treeRepr subcommands)
+
+      if has_subcommands:
+        for subcommand in argument[^1]:
+          subcommands.add parseArgumentBody(subcommand)
+
+
+      #argument_construct.add(
+      #  quote do:
+      #    subcommands=`subcommands`
+      #)
+
+      # NOTE: `[<subcommand_construct1>, <subcommand_construct2>, ...]`
+      var subcommands_bracketexpr_construct = nnkBracket.newTree()
+
+      for subcommand in subcommands:
+        subcommands_bracketexpr_construct.add(subcommand)
+
+      let subcommands_construct = nnkPrefix.newTree(
+        ident("@"),
+        subcommands_bracketexpr_construct
+      )
+
+      #argument_construct.add(
+      #  nnkExprEqExpr.newTree(
+      #    ident("subcommands"),
+      #    subcommands_construct
+      #  )
+      #)
+
+      let subcommands_pos = 1
+      var arg_pos = 0
+
+      for construct_arg in argument[1..last_index]:
+        if arg_pos == subcommands_pos:
+          argument_construct.add(subcommands_construct)
+          continue
+
+        argument_construct.add(construct_arg)
+        arg_pos += 1
+
+      if arg_pos > subcommands_pos:
+        argument_construct.add(subcommands_construct)
+
+
+
+
+      #debugEcho (repr argument_construct)
+    of "flag":
+      argument_construct.add ident("newFlag")
+
+      for construct_argument in argument[1..^1]:
+        argument_construct.add construct_argument
+
+      #debugEcho (repr argument_construct)
+    of "unnamedargument":
+      argument_construct.add ident("newUnnamedArgument")
+
+      for construct_argument in argument[1..^1]:
+        argument_construct.add construct_argument
+
+      #debugEcho (repr argument_construct)
+    else: error(&"unsupported kind {argument_kind}", argument)
+
+  # TODO: RETURN A CONSTRUCTION OF ARGUMENT
+  argument_construct
+
+
+macro initParser*(
+  parser: var Parser,
+  body: untyped
+): untyped =
+  # TODO: parse the body and add arguments
+  var stmt_list = nnkStmtList.newTree()
+
+  for argument in body:
+    let argument_construct = parseArgumentBody(`argument`)
+
+    stmt_list.add (
+      quote do:
+        `parser`.addArgument(`argument_construct`)
+    )
+
+  stmt_list

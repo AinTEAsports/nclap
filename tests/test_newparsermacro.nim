@@ -1,64 +1,37 @@
-#import
-#  std/[
-#    macros,
-#    options,
-#    unittest,
-#  ],
-#
-#  nclap/parser
-#
-#
-#test "newParser macro":
-#  #var p = newParser("unnamed arg example"):
-#  #  flag("-n", "--no-log", "does not log the removal", required=false, holds_value=false)
-#  #
-#  #  command("add"):
-#  #    command("project"):
-#  #      discard
-#  #
-#  #  command("task"):
-#  #    flag("-T", description="priority of task", default=some("medium"))
-#  #
-#  #  command("remove"):
-#  #    flag("-f", description="force delete")
-#  #
-#  #let args = p.parse(@["add", "task", "-T", "8"])
-#  #
-#  #echo args
-#
-#
-#
-#
-#  var p = newParserMacro("unnamed arg example", quote do:
-#    flag("-n", "--no-log", "does not log the removal", required=false, holds_value=false)
-#
-#    command("add"):
-#      command("project"):
-#        discard
-#
-#    command("task"):
-#      flag("-T", description="priority of task", default=some("medium"))
-#
-#    command("remove"):
-#      flag("-f", description="force delete")
-#  )
-#
-#  echo p
-#  #let args = p.parse(@["add", "task", "-T", "8"])
-#
-#  #echo args
-#
-#  #dumpTree:
-#  #  newParser("unnamed arg example", quote do:
-#  #    flag("-n", "--no-log", "does not log the removal", required=false, holds_value=false)
-#  #
-#  #    command("add"):
-#  #      command("project"):
-#  #        discard
-#  #
-#  #    command("task"):
-#  #      flag("-T", description="priority of task", default=some("medium"))
-#  #
-#  #    command("remove"):
-#  #      flag("-f", description="force delete")
-#  #  )
+import
+  std/[
+    options,
+    macros
+  ],
+
+  nclap,
+  testutils
+
+
+test "initParser macro":
+  var parser = newParser("makeParser macro test, todo list app")
+
+  initParser(parser):
+    Flag("-h", "--help", "shows help message")
+
+    Command("add", "adds a task"):
+      UnnamedArgument("name", "name of task to add")
+      Flag("-k", "--alias", "alias of task", holds_value=true, default=some[string](""))
+      #Flag("-k", "--alias", "alias of task", false, true)
+
+    Command("remove", "removes a task"):
+      UnnamedArgument("name", "name of task to remove")
+      Flag("-n", "--no-log", "do not log the removal")
+      Flag("-j", "--no-resolve-alias", "do not resolve the alias", false, false)
+
+    Command("list"):
+      Command("all", "lists all tasks, even the hidden ones")
+
+
+  let args = parser.parse(@["add", "task number 1"])
+
+  echo args
+
+  #check ?(args@add)
+  #check not ?((args@add).alias)
+  #check !((args@add).name) == ""
