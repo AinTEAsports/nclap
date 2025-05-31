@@ -1,8 +1,5 @@
 import
-  std/[
-    options,
-    macros
-  ],
+  std/options,
 
   nclap,
   testutils

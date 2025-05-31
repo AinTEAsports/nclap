@@ -1,7 +1,5 @@
 import nclap
 
-import fusion/matching
-
 var p = newParser("example number 2, commands only")
 
 # NOTE: p.addCommand(name, subcommands=@[], desc=name, required=true)
@@ -11,11 +9,11 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-match true:
-  of ?args.add:
-    echo "Adding " & (if ?args.add.task: "task" else: "project")
-  of ?args.remove:
-    echo "Removing" & (if ?args.add.task: "task" else: "project")
-  of ?args.list:
-    echo "Listing " & (if not ?args.list.all: "almost " else: "") & "everything"
-  else: assert false
+if ?args.add:
+  echo "Adding " & (if ?(args@add@task): "task" else: "project")
+elif ?args.remove:
+  echo "Removing" & (if ?(args@add@task): "task" else: "project")
+elif ?args.list:
+  echo "Listing " & (if not ?(args@list@all): "almost " else: "") & "everything"
+else:
+  assert false, "this should never reach since all are required"
