@@ -71,7 +71,7 @@ of args@list:
 
 ## Tips
 
-#### Customizing the help message
+### Customizing the help message
 You can customize the parser help message:
 ```nim
 let settings: HelpSettings = (
@@ -112,8 +112,10 @@ It might not be the most beautiful help message, but at least it covers every op
 for the moment.<br>
 Feel free to tinker with these to find the perfect combination
 
+<br>
+<br>
 
-#### Compact short flags
+### Compact short flags
 You can use the `enforce_shortflag=true` in `newParser` to enforce flags short version to be at most 1 character long
 (for example `-a`, `-o`, but not `-type`)
 
@@ -125,8 +127,10 @@ By default this option is off, letting you have short flags as long as you want
 (not too long though, for example `-outputtoacertainfileaftercallingandthisflagisbecomingabittoolong` is a tiny bit too long)
 but will not enable compacting short flags (for example `./program -abc` will stay `./program -abc`)
 
+<br>
+<br>
 
-#### Use the parser outside of the CLI
+### Use the parser outside of the CLI
 This parser's `.parse` functin can also take in a `seq[string]` to parse anything you throw at it, for example in the previous example we could have done
 ```nim
 let args = parser.parse(@["add", "--alias=an_alias", "task_name"])
