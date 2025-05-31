@@ -85,7 +85,7 @@ func newCommand*(
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
   #holds_value: bool = HOLDS_VALUE_DEFAULT,
-  default: Option[string] = none[string]()
+  #default: Option[string] = none[string]()
 ): Argument =
   Argument(
     kind: Command,
@@ -94,7 +94,7 @@ func newCommand*(
     description: description,
     required: required,
     holds_value: false,
-    default: default
+    default: none[string]()
   )
 
 
@@ -138,7 +138,12 @@ func `$`*(argument: Argument): string =
       &"Command(name: \"{n}\", subcommands: {s}, description: \"{desc}\", required: {r}, has_content: {h}, default: {def})"
 
     of UnnamedArgument:
-      &"[WARNING]: not implemented yet"
+      #&"[WARNING]: not implemented yet"
+      let
+        n = argument.ua_name
+        d = argument.description
+
+      &"UnnamedArgument(name: \"{n}\", description: \"{d}\")"
 
 
 func getFlags*(arguments: seq[Argument]): seq[Argument] =

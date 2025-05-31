@@ -88,7 +88,7 @@ proc addCommand*(
   description: string = name,
   required: bool = COMMAND_REQUIRED_DEFAULT,
   #has_content: bool = HOLDS_VALUE_DEFAULT,
-  default: Option[string] = none[string]()
+  #default: Option[string] = none[string]()
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
     error_exit(
@@ -99,7 +99,7 @@ proc addCommand*(
       parser.no_colors
     )
 
-  parser.addArgument(newCommand(name, subcommands, description, required, default))
+  parser.addArgument(newCommand(name, subcommands, description, required))
 
 
 proc addFlag*(
@@ -417,7 +417,6 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       let otype: Option[Argument] = valid_arguments.getFirstUnregisteredUnnamedArgument(res, parser)
       otype.isSome
     ):
-
       let
         o_current_ua = otype
         current_ua: Argument = (
@@ -448,14 +447,15 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         current_command = valid_arguments.getCommand(current_argv, parser)
         (rest, argv_rest) = (
           if len(current_command.subcommands) == 0: (initOrderedTable[string, CLIArg](), argv[depth+1..^1])
-          elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
+          #elif len(getCommands(current_command.subcommands)) == 0:  # NOTE: maybe `len(getFlags(current_command.subcommands)) > 0` instead if bug ?
+          elif getCommands(current_command.subcommands).len == 0 and getUnnamedArguments(current_command.subcommands).len == 0:  # NOTE: if no subcommands and no unnamed arguments, then nothing should be left
             var res_subargs = res[current_command.name].subarguments
             let new_depth = parser.parseFlags(res_subargs, argv, depth+1, some[seq[Argument]](current_command.subcommands))
 
             res[current_command.name] = CLIArg(
               content: none[string](),
               registered: true,
-              default: current_command.default,
+              default: none[string](),
               subarguments: res_subargs
             )
 
@@ -490,7 +490,7 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
       res[current_command.name] = CLIArg(
         content: none[string](),
         registered: true,
-        default: current_command.default,
+        default: none[string](),
         subarguments: concatCLIArgs(res[current_command.name].subarguments, rest)
       )
 
@@ -619,7 +619,8 @@ proc parse*(parser: Parser): CLIArgs =
   parser.parse collect(for i in 1..paramCount(): paramStr(i))
 
 
-func parseArgumentBody(argument: NimNode): NimNode =
+func parseArgumentBody(argument: NimNode, previous_level: Natural = 0): NimNode =
+  let indent_level = " ".repeat(previous_level)
   var argument_construct = nnkCall.newTree()
 
   if argument.kind != nnkCall:
@@ -641,17 +642,9 @@ func parseArgumentBody(argument: NimNode): NimNode =
       # it will be `newSeq(<arg_construct1>, <arg_construct2>, ...)`
       var subcommands: seq[NimNode] = @[]
 
-      #debugEcho (treeRepr subcommands)
-
       if has_subcommands:
         for subcommand in argument[^1]:
-          subcommands.add parseArgumentBody(subcommand)
-
-
-      #argument_construct.add(
-      #  quote do:
-      #    subcommands=`subcommands`
-      #)
+          subcommands.add parseArgumentBody(subcommand, previous_level+4)
 
       # NOTE: `[<subcommand_construct1>, <subcommand_construct2>, ...]`
       var subcommands_bracketexpr_construct = nnkBracket.newTree()
@@ -664,48 +657,47 @@ func parseArgumentBody(argument: NimNode): NimNode =
         subcommands_bracketexpr_construct
       )
 
-      #argument_construct.add(
-      #  nnkExprEqExpr.newTree(
-      #    ident("subcommands"),
-      #    subcommands_construct
-      #  )
-      #)
+      if argument.len < 2:
+        error("construct too small, name is required", argument)
 
-      let subcommands_pos = 1
-      var arg_pos = 0
+      # NOTE: we need the subcommands to be in second, and the name is always required so...
+      argument_construct.add(argument[1])
+      argument_construct.add(subcommands_construct)
 
-      for construct_arg in argument[1..last_index]:
-        if arg_pos == subcommands_pos:
-          argument_construct.add(subcommands_construct)
-          continue
-
+      for construct_arg in argument[2..last_index]:
         argument_construct.add(construct_arg)
-        arg_pos += 1
-
-      if arg_pos > subcommands_pos:
-        argument_construct.add(subcommands_construct)
 
 
+      #let subcommands_pos = 1
+      #var arg_pos = 0
+      #
+      #for construct_arg in argument[1..last_index]:
+      #  if arg_pos == subcommands_pos:
+      #    argument_construct.add(subcommands_construct)
+      #
+      #    arg_pos += 1
+      #    continue
+      #
+      #  argument_construct.add(construct_arg)
+      #  arg_pos += 1
+      #
+      #if arg_pos > subcommands_pos+1:
+      #  argument_construct.add(subcommands_construct)
 
-
-      #debugEcho (repr argument_construct)
     of "flag":
       argument_construct.add ident("newFlag")
 
       for construct_argument in argument[1..^1]:
         argument_construct.add construct_argument
 
-      #debugEcho (repr argument_construct)
     of "unnamedargument":
       argument_construct.add ident("newUnnamedArgument")
 
       for construct_argument in argument[1..^1]:
         argument_construct.add construct_argument
 
-      #debugEcho (repr argument_construct)
     else: error(&"unsupported kind {argument_kind}", argument)
 
-  # TODO: RETURN A CONSTRUCTION OF ARGUMENT
   argument_construct
 
 
@@ -713,7 +705,6 @@ macro initParser*(
   parser: var Parser,
   body: untyped
 ): untyped =
-  # TODO: parse the body and add arguments
   var stmt_list = nnkStmtList.newTree()
 
   for argument in body:

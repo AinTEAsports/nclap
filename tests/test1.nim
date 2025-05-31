@@ -389,7 +389,7 @@ test "total":
   check ?args.aggressivity
 
 test "example2":
-  
+
   var p = newParser("example number 2, commands only")
 
   # NOTE: p.addCommand(name, subcommands=@[], desc=name, required=true)
