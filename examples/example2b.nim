@@ -9,11 +9,12 @@ p.addCommand("add", @[newCommand("task", @[], "adds a task"), newCommand("projec
 
 let args = p.parse()
 
-if ?(args@add):
-  echo "Adding " & (if ?(args@add@task): "task" else: "project")
-elif ?(args@remove):
-  echo "Removing" & (if ?(args@add@task): "task" else: "project")
-elif ?(args@list):
-  echo "Listing " & (if not ?(args@list@all): "almost " else: "") & "everything"
+commandMatch:
+of args@add@project, args@remove@project:
+  echo "doing something with a project, either add or remove idk"
+of args@list@all:
+  echo "listing stuff, everything"
+of args@list:
+  echo "listing stuff, maybe all"
 else:
-  assert false, "this should never reach since all are required"
+  echo "this should never happened but this is still valid syntax"
