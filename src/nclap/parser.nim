@@ -363,13 +363,15 @@ func fillCLIArgs(arguments: seq[Argument], depth: int = 0): CLIArgs =
 
 
 proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_arguments: Option[seq[Argument]]): (CLIArgs, seq[string]) =
-  if len(argv) == 0 or start >= len(argv):
-    return (initOrderedTable[string, CLIArg](), @[])
-
+  # NOTE: fill cli args first so that nothing given => `checkForMissingRequired` not crashing
   var
     valid_arguments = valid_arguments.get(parser.arguments)  # NOTE: get the value, or if there is none, take `parser.arguments` by default
     res: CLIArgs = fillCLIArgs(valid_arguments)
     depth = start
+
+  if len(argv) == 0 or start >= len(argv):
+    #return (initOrderedTable[string, CLIArg](), @[])
+    return (res, @[])
 
   # NOTE: fill in all the arguments, with `registered: false` by default
   #for argument in valid_arguments:
@@ -502,6 +504,17 @@ func first[T](s: seq[T]): Option[T] =
   else: some[T](s[0])
 
 
+func cliargFromArgument(cliargs: CLIArgs, argument: Argument): CLIArg =
+  let name = (
+    case argument.kind:
+      of UnnamedArgument: UNNAMED_ARGUMENT_PREFIX & argument.ua_name
+      of Flag: argument.long  # NOTE: `argument.long` already starts with a '-'
+      of Command: argument.name
+  )
+
+  cliargs[name]
+
+
 func checkForMissingCommand(
   valid_arguments: seq[Argument],
   cliargs: CLIArgs,
@@ -514,9 +527,9 @@ func checkForMissingCommand(
 
   # NOTE: either no command registered or one since at most one command
   # can be registered per level
-  assert len(required_and_registered) <= 1
+  assert required_and_registered.len <= 1
 
-  if len(required_and_registered) == 1:
+  if required_and_registered.len == 1:
     let cmd = required_and_registered[0]
 
     checkForMissingCommand(
@@ -539,7 +552,7 @@ func checkForMissingFlags(
   cliargs: CLIArgs,
   prev_flag: Argument
 ): (seq[Argument], Option[Argument]) =
-  if len(cliargs) == 0:
+  if cliargs.len == 0:
     return (@[], none[Argument]())
 
   let required_but_unregistered_flags = valid_arguments
@@ -573,44 +586,122 @@ func checkForMissingFlags(
       )
       
 
+func checkForMissingRequired(
+  valid_arguments: seq[Argument],
+  cliargs: CLIArgs
+#): Option[(Argument, seq[CLIArg])] =
+): Option[seq[(Argument, CLIArg)]] =
+  ##[ Returns a `some` if a missing required was found, following this structure:
+    Some(
+      (
+        Argument: the parent argument which has at least one of his required children missing 
+        seq[CLIArg]: the possibilities of missing required cliarg (children of `Argument`) (will be one if no choice)
+      )
+    )
+  ]##
+
+  #type T = (Argument, seq[CLIArg])
+  type T = seq[(Argument, CLIArg)]
+
+  if valid_arguments.len == 0:
+    return none[T]()
+
+  let required_other_pair = valid_arguments
+    .filter(cmd => cmd.kind != Command and cmd.required)
+    .map(cmd => (cmd, cliargFromArgument(cliargs, cmd)))
+
+  for (cmd, cliarg_cmd) in required_other_pair:
+    if not cliarg_cmd.registered and cliarg_cmd.default.isNone:
+      return some[T](@[(cmd, cliarg_cmd)])
+
+
+  if valid_arguments.getCommands().len == 0:
+    return none[T]()
+
+  # NOTE: check if at least one required command is here
+  let
+    required_commands_pair = valid_arguments
+      .filter(cmd => cmd.kind == Command and cmd.required)
+      .map(cmd => (cmd, cliargFromArgument(cliargs, cmd)))
+
+    required_commands_registered = required_commands_pair.filter(cmd_pair => cmd_pair[1].registered)
+
+  return (
+    if required_commands_registered.len == 0:
+      #return some[T](required_commands_pair.filter(cmd_pair => not cmd_pair[1].registered))
+      return some[T](required_commands_pair.filter(cmd_pair => not cmd_pair[1].registered))
+    else:
+      # NOTE: you cannot give two required commands at the same time (for example 'add' and 'remove')
+      assert required_commands_registered.len == 1
+
+      let (given_command, given_cliarg) = required_commands_registered[0]
+
+      let res: Option[T] = checkForMissingRequired(given_command.subcommands, given_cliarg.subarguments)
+      res
+  )
+
 
 proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
-  if len(argv) == 0:
-    parser.showHelp()
+  #if len(argv) == 0:
+  #  parser.showHelp()
 
   let
     argv = (if parser.enforce_short: expandArgvShortFlags(argv) else: argv)
     (res, _) = parser.parseArgs(argv, 0, none[seq[Argument]]())
 
+  let missing_required_o = checkForMissingRequired(parser.arguments, res)
 
-  # NOTE: this is for partial help message
-  let (missing_commands, parent_command) = checkForMissingCommand(parser.arguments, res, newCommand(""))
+  if missing_required_o.isSome:
+    assert missing_required_o.get.len != 0
 
-  # NOTE: which means a command or subcommand is missing (one of the commands/subcommands had subcommands and none of them were registered)
-  if len(missing_commands) > 0:
-    # NOTE: which means no commands were registered at all
-    if parent_command.get().name == "":
-      parser.showHelp(exit_code=MISSING_COMMAND_EXIT_CODE)
-    else:
-      if parser.exit_on_error:
-        echo parser.helpmsg
-        echo parent_command.get().helpToString(settings=parser.help_settings)
-        quit(MISSING_COMMAND_EXIT_CODE)
-      else: raise newException(ValueError, "Missing a command to continue parsing")
+    let missing_required_names = missing_required_o.get()
+      .map(cmd_pair => cmd_pair[0])
+      .map(cmd => (
+        let name = case cmd.kind:
+          of Command: cmd.name
+          of Flag: &"[{cmd.short}|{cmd.long}]"
+          of UnnamedArgument: cmd.ua_name
 
+        &"({cmd.kind}) {name}"
+      )).join(" | ")
 
-  # NOTE: this is to check if every required flags has been registered
-  let (missing_required_flags, _) = checkForMissingFlags(parser.arguments, res, newCommand(""))
+    # TODO: make better error message because this is barely understandable to the end user
+    error_exit(
+      parser.exit_on_error,
+      FieldDefect,
+      &"missing one of: {missing_required_names}",
+      INVALID_ARGUMENT_EXIT_CODE,
+      parser.no_colors
+    )
 
-  if len(missing_required_flags) > 0:
-    if parser.exit_on_error:
-      echo error(
-        "ERROR.parse",
-        "Missing one of: " & join(missing_required_flags.map(arg => &"\"{arg.long}\""), " | "),
-        no_colors=parser.no_colors
-      )
-      quit(MISSING_REQUIRED_FLAGS_EXIT_CODE)
-    else: raise newException(ValueError, "Missing required flags")
+  ## NOTE: this is for partial help message
+  #let (missing_commands, parent_command) = checkForMissingCommand(parser.arguments, res, newCommand(""))
+  #
+  ## NOTE: which means a command or subcommand is missing (one of the commands/subcommands had subcommands and none of them were registered)
+  #if len(missing_commands) > 0:
+  #  # NOTE: which means no commands were registered at all
+  #  if parent_command.get().name == "":
+  #    parser.showHelp(exit_code=MISSING_COMMAND_EXIT_CODE)
+  #  else:
+  #    if parser.exit_on_error:
+  #      echo parser.helpmsg
+  #      echo parent_command.get().helpToString(settings=parser.help_settings)
+  #      quit(MISSING_COMMAND_EXIT_CODE)
+  #    else: raise newException(ValueError, "Missing a command to continue parsing")
+  #
+  #
+  ## NOTE: this is to check if every required flags has been registered
+  #let (missing_required_flags, _) = checkForMissingFlags(parser.arguments, res, newCommand(""))
+  #
+  #if len(missing_required_flags) > 0:
+  #  if parser.exit_on_error:
+  #    echo error(
+  #      "ERROR.parse",
+  #      "Missing one of: " & join(missing_required_flags.map(arg => &"\"{arg.long}\""), " | "),
+  #      no_colors=parser.no_colors
+  #    )
+  #    quit(MISSING_REQUIRED_FLAGS_EXIT_CODE)
+  #  else: raise newException(ValueError, "Missing required flags")
 
   res
 
