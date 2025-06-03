@@ -26,3 +26,5 @@ test "missing required":
 
   check ?(args@add)
   check !((args@add).name) == "name here"
+
+  parser.showHelp()

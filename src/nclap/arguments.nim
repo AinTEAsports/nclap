@@ -15,6 +15,7 @@ const
   DEFAULT_SHOWHELP_SETTINGS* = (
     tabstring: "  ",
     prefix_pretab: "",
+    prefix_posttab_first: "",
     prefix_posttab: "",
     prefix_posttab_last: "",
     surround_left_required: "(",
@@ -28,6 +29,7 @@ type
   HelpSettings* = tuple[
     tabstring: string,
     prefix_pretab: string,
+    prefix_posttab_first: string,
     prefix_posttab: string,
     prefix_posttab_last: string,
     surround_left_required: string,
@@ -167,6 +169,7 @@ func helpToStringAux(
     (
       tabstring,
       prefix_pretab,
+      prefix_posttab_first,
       prefix_posttab,
       prefix_posttab_last,
       surround_left_required,
@@ -175,9 +178,11 @@ func helpToStringAux(
       surround_right_optional,
       separator
     ) = settings
+    #tabrepeat = tabstring.repeat(depth)
     tabrepeat = tabstring.repeat(depth)
     posttab = (
-      if is_last or argument.kind == Flag: prefix_posttab_last
+      if is_last: prefix_posttab_last
+      elif is_first: prefix_posttab_first
       else: prefix_posttab
     )
 
@@ -223,5 +228,7 @@ func helpToStringAux(
 func helpToString*(
   argument: Argument,
   settings: HelpSettings = DEFAULT_SHOWHELP_SETTINGS,
+  is_first: bool = true,
+  is_last: bool = false
 ): string =
-  helpToStringAux(argument, settings, 0, true, false)
+  helpToStringAux(argument, settings, 0, is_first, is_last)

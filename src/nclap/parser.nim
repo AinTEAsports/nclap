@@ -149,8 +149,13 @@ proc showHelp*(
 
   echo parser.helpmsg
 
-  for arg in parser.arguments:
-    echo helpToString(arg, parser.help_settings)
+  for i in 0..<parser.arguments.len:
+    let
+      arg = parser.arguments[i]
+      is_first = (i == 0)
+      is_last = (i == parser.arguments.len - 1)
+
+    echo helpToString(arg, parser.help_settings, is_first=is_first, is_last=is_last)
 
   if parser.exit_on_error:
     quit(exit_code)
