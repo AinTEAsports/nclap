@@ -32,9 +32,44 @@ type
     exit_on_error: bool
 
 
-template error_exit(does_exit, error_type, error_message, exit_code, no_colors: typed): untyped =
-  if does_exit:
-    echo error("ERROR." & $error_type, error_message, no_colors)
+func `$`*(parser: Parser): string =
+  &"Parser(arguments: {parser.arguments}, helpmsg: \"{parser.helpmsg}\")"
+
+
+proc showHelp*(
+  parser: Parser,
+  exit_code: int = 0,
+) =
+  ##[ Shows an auto-generated help message and exits the program with code `exit_code` if `parser.exit_on_error` is set
+  ]##
+
+  echo parser.helpmsg
+
+  for i in 0..<parser.arguments.len:
+    let
+      arg = parser.arguments[i]
+      is_first = (i == 0)
+      is_last = (i == parser.arguments.len - 1)
+
+    echo helpToString(arg, parser.help_settings, is_first=is_first, is_last=is_last)
+
+  if parser.exit_on_error:
+    quit(exit_code)
+
+
+template error_exit(
+  parser: Parser,
+  error_type: typedesc,
+  error_message: string,
+  exit_code: int,
+  display_helpmessage: bool
+): untyped =
+  if parser.exit_on_error:
+    echo error("ERROR." & $error_type, error_message, parser.no_colors)
+
+    if display_helpmessage:
+      parser.showHelp(exit_code)
+
     quit exit_code
   else:
     raise newException(error_type, error_message)
@@ -65,11 +100,11 @@ proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
         # NOTE: more seriously, this is enforcing one char length short flags
         if len(argument.short) != 2:
           error_exit(
-            parser.exit_on_error,
+            parser,
             FieldDefect,
             &"[ERROR.invalid-argument] `parser.enforce_short` is true, but the short flag is more than 1 character: {argument.short}",
             INVALID_ARGUMENT_EXIT_CODE,
-            parser.no_colors
+            false
           )
         else: parser.arguments.add(argument)
       of Command:
@@ -92,11 +127,11 @@ proc addCommand*(
 ): var Parser {.discardable.} =
   if name.startsWith('-'):
     error_exit(
-      parser.exit_on_error,
+      parser,
       FieldDefect,
       &"A command cannot start with a '-': {name}",
       INVALID_ARGUMENT_EXIT_CODE,
-      parser.no_colors
+      false
     )
 
   parser.addArgument(newCommand(name, subcommands, description, required))
@@ -115,11 +150,11 @@ proc addFlag*(
   # since if no long flag is given, the long flag will just be the short flag
   if not (short.startsWith('-') and long.startsWith('-')):
     error_exit(
-      parser.exit_on_error,
+      parser,
       FieldDefect,
       &"A flag must start with a '-': {short}|{long}",
       INVALID_ARGUMENT_EXIT_CODE,
-      parser.no_colors
+      false
     )
 
   parser.addArgument(newFlag(short, long, description, holds_value, required, default))
@@ -134,31 +169,6 @@ proc addUnnamedArgument*(
   # NOTE: this is a design choice, long flags can start with only a dash,
   # since if no long flag is given, the long flag will just be the short flag
   parser.addArgument(newUnnamedArgument(name, description, default))
-
-
-func `$`*(parser: Parser): string =
-  &"Parser(arguments: {parser.arguments}, helpmsg: \"{parser.helpmsg}\")"
-
-
-proc showHelp*(
-  parser: Parser,
-  exit_code: int = 0,
-) =
-  ##[ Shows an auto-generated help message and exits the program with code `exit_code` if `parser.exit_on_error` is set
-  ]##
-
-  echo parser.helpmsg
-
-  for i in 0..<parser.arguments.len:
-    let
-      arg = parser.arguments[i]
-      is_first = (i == 0)
-      is_last = (i == parser.arguments.len - 1)
-
-    echo helpToString(arg, parser.help_settings, is_first=is_first, is_last=is_last)
-
-  if parser.exit_on_error:
-    quit(exit_code)
 
 
 func getCommands(parser: Parser): seq[Argument] =
@@ -212,11 +222,11 @@ proc getCommand(arguments: seq[Argument], argument_name: string, parser: Parser)
 
   # NOTE: should be impossible since we check before calling this function
   error_exit(
-    parser.exit_on_error,
+    parser,
     FieldDefect,
     &"Invalid command: '{argument_name}'",
     INVALID_ARGUMENT_EXIT_CODE,
-    parser.no_colors
+    false
   )
 
 
@@ -227,11 +237,11 @@ proc getUnnamedArgument(arguments: seq[Argument], argument_name: string, parser:
 
   # NOTE: should be impossible since we check before calling this function
   error_exit(
-    parser.exit_on_error,
+    parser,
     FieldDefect,
     &"Invalid flag: '{argument_name}'",
     INVALID_ARGUMENT_EXIT_CODE,
-    parser.no_colors
+    false
   )
 
 
@@ -272,11 +282,11 @@ proc getFlag(arguments: seq[Argument], argument_name: string, parser: Parser): A
 
   # NOTE: should be impossible since we check before calling this function
   error_exit(
-    parser.exit_on_error,
+    parser,
     FieldDefect,
     &"Invalid flag: '{argument_name}'",
     INVALID_ARGUMENT_EXIT_CODE,
-    parser.no_colors
+    false
   )
 
 
@@ -317,11 +327,11 @@ proc parseFlags(
           # even though handling the error in `parseArgs` is way better since this function should not quit unexpectedly)
 
           error_exit(
-            parser.exit_on_error,
+            parser,
             ValueError,
             &"Expected a value after the flag '{current_argv}'",
             INVALID_ARGUMENT_EXIT_CODE,
-            parser.no_colors
+            false
           )
 
         content = argv[depth]
@@ -429,11 +439,11 @@ proc parseArgs(parser: Parser, argv: seq[string], start: int = 0, valid_argument
         current_ua: Argument = (
           if o_current_ua.isNone:  # FIXME: useless since we check it in the if
             error_exit(
-              parser.exit_on_error,
+              parser,
               ValueError,
               "Invalid supplementary unnamed argument",
               INVALID_ARGUMENT_EXIT_CODE,
-              parser.no_colors
+              true
             )
           else: o_current_ua.get()
         )
@@ -672,11 +682,11 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
 
     # TODO: make better error message because this is barely understandable to the end user
     error_exit(
-      parser.exit_on_error,
+      parser,
       FieldDefect,
       &"missing one of: {missing_required_names}",
       INVALID_ARGUMENT_EXIT_CODE,
-      parser.no_colors
+      true
     )
 
   ## NOTE: this is for partial help message
@@ -716,7 +726,7 @@ proc parse*(parser: Parser): CLIArgs =
 
 
 func parseArgumentBody(argument: NimNode, previous_level: Natural = 0): NimNode =
-  let indent_level = " ".repeat(previous_level)
+  #let indent_level = " ".repeat(previous_level)
   var argument_construct = nnkCall.newTree()
 
   if argument.kind != nnkCall:

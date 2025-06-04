@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.2.7"
+version       = "0.2.8"
 author        = "aintea"
 description   = "A simple clap-like command line argument parser written in Nim"
 license       = "MIT"
