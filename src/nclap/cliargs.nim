@@ -83,17 +83,16 @@ func getContent*(cliarg: CLIArg, default: string = DEFAULT_CONTENT, error: bool 
   ]##
 
   if cliarg.content.isSome: cliarg.content.get
-  else:
-    if error: raise newException(ValueError, "No content in CLIArg")
-    else: default
+  elif cliarg.default.isSome: cliarg.default.get
+  elif error: raise newException(ValueError, "No content in CLIArg")
+  else: default
 
 
 template `!!`*(cliarg: CLIArg, default: string): string =
   cliarg.getContent(default, error=false)
 
 template `!`*(cliarg: CLIArg): string =
-  if cliarg.default.isSome: cliarg !! cliarg.default.get()
-  else: cliarg.getContent(error=true)
+  cliarg.getContent(error=true)
 
 
 template `?`*(cliarg: CLIArg): bool =
@@ -101,7 +100,6 @@ template `?`*(cliarg: CLIArg): bool =
 
 template `??`*(cliarg: CLIArg, s: string): string =
   (if cliarg.registered: s else: "")
-
 
 
 template `@`*(cliarg: CLIArg, name: untyped): CLIArg =
