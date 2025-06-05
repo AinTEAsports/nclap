@@ -66,7 +66,6 @@ of args@list:
   echo "Listing all commands that are not hidden"
 ```
 
-
 ---
 
 ## Tips
