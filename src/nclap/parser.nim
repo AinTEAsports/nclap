@@ -157,7 +157,11 @@ proc addFlag*(
       false
     )
 
-  parser.addArgument(newFlag(short, long, description, holds_value, required, default))
+  let
+    holds_value_check = (if default.isSome: true else: holds_value)
+    default_check = (if not holds_value: none[string]() else: default)
+
+  parser.addArgument(newFlag(short, long, description, holds_value_check, required, default_check))
 
 
 proc addUnnamedArgument*(
