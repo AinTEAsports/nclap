@@ -93,12 +93,27 @@ func newParser*(
 
 
 proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discardable.} =
+  var argument_check = argument
+
+  # NOTE: check for default and stuff
+  case argument_check.kind:
+    of Flag:
+      let flag = argument
+
+      let
+        holds_value_check = (if flag.default.isSome: true else: flag.holds_value)
+        default_check = (if flag.holds_value: none[string]() else: flag.default)
+
+      argument_check.holds_value = holds_value_check
+      argument_check.default = default_check
+    else: discard
+
   if parser.enforce_short:
-    case argument.kind:
+    case argument_check.kind:
       of Flag:
         # NOTE: 1 for the "-" and 1 for the character, 1+1=2 (I'm a genius I know)
         # NOTE: more seriously, this is enforcing one char length short flags
-        if len(argument.short) != 2:
+        if len(argument_check.short) != 2:
           error_exit(
             parser,
             FieldDefect,
@@ -106,12 +121,13 @@ proc addArgument*(parser: var Parser, argument: Argument): var Parser {.discarda
             INVALID_ARGUMENT_EXIT_CODE,
             false
           )
-        else: parser.arguments.add(argument)
+
+        parser.arguments.add(argument_check)
       of Command:
-        parser.arguments.add(argument)
+        parser.arguments.add(argument_check)
       of UnnamedArgument:
-        parser.arguments.add(argument)
-  else: parser.arguments.add(argument)
+        parser.arguments.add(argument_check)
+  else: parser.arguments.add(argument_check)
 
   parser
 
@@ -157,11 +173,7 @@ proc addFlag*(
       false
     )
 
-  let
-    holds_value_check = (if default.isSome: true else: holds_value)
-    default_check = (if not holds_value: none[string]() else: default)
-
-  parser.addArgument(newFlag(short, long, description, holds_value_check, required, default_check))
+  parser.addArgument(newFlag(short, long, description, holds_value, required, default))
 
 
 proc addUnnamedArgument*(
