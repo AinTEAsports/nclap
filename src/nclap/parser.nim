@@ -642,7 +642,8 @@ func checkForMissingRequired(
     required_commands_registered = required_commands_pair.filter(cmd_pair => cmd_pair[1].registered)
 
   return (
-    if required_commands_registered.len == 0:
+    if required_commands_pair.len == 0: return none[T]()  # NOTE: if is empty then nothing to filter (WARNING: assert on line ~670)
+    elif required_commands_registered.len == 0:
       #return some[T](required_commands_pair.filter(cmd_pair => not cmd_pair[1].registered))
       return some[T](required_commands_pair.filter(cmd_pair => not cmd_pair[1].registered))
     else:
@@ -667,7 +668,7 @@ proc parse*(parser: Parser, argv: seq[string]): CLIArgs =
   let missing_required_o = checkForMissingRequired(parser.arguments, res)
 
   if missing_required_o.isSome:
-    assert missing_required_o.get.len != 0
+    assert missing_required_o.get().len != 0
 
     let missing_required_names = missing_required_o.get()
       .map(cmd_pair => cmd_pair[0])

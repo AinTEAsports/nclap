@@ -18,11 +18,11 @@ test "example 1":
     Command("list"):
       Command("all", "lists all tasks, even the hidden ones", required=false)
 
-  let args = parser.parse(@["add", "task name"])
+  let args = parser.parse(@["list", "all"])
 
 
   check not ?(args.help)
   check not ?(args@remove)
-  check not ?(args@list)
+  check not ?(args@add)
 
-  check !(args@add).name == "task name"
+  echo args
