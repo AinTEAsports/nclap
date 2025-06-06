@@ -300,7 +300,7 @@ test "compact shortflags":
 test "default param":
   let default_target = "127.0.0.1"
 
-  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+  var p = newParser("default param", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
 
   p
     .addFlag("-t", "--target", "target ip address", true, true, default=some(default_target))
@@ -308,13 +308,13 @@ test "default param":
     .addFlag("-n", "--no-log", "does not log anything", false, false)
     .addFlag("-o", "--output", "outputs the content to a file", true)
 
-  let args = p.parse(@["-p", "1-10", "-n"])
+  let args = p.parse(@["-p", "1-10", "-n", "-t=127.0.0.1"])
 
   check !args.target == default_target
 
 
 test "dot flag access":
-  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+  var p = newParser("dot flag access", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
 
   p
     .addFlag("-t", "--target", "directory in which to do stuff", true, true, default=some("127.0.0.1"))
@@ -328,7 +328,7 @@ test "dot flag access":
 
 
 test "unnamed arguments":
-  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+  var p = newParser("unnamed arguments", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
 
   p
     .addUnnamedArgument("target", default=some("127.0.0.1"))
@@ -344,7 +344,7 @@ test "unnamed arguments":
 
 test "total":
   let default_target = "127.0.0.1"
-  var p = newParser("simple port scanner", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
+  var p = newParser("total", DEFAULT_SHOWHELP_SETTINGS, DEFAULT_ENFORCE_SHORT, false, true)
 
   p
     .addUnnamedArgument("target", default=some(default_target))
